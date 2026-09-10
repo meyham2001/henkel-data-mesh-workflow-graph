@@ -271,11 +271,11 @@ export const PLATFORM_METADATA: Record<string, PlatformMetadata> = {
   },
   s10b: {
     platformId: 'inside_databricks',
-    systemName: 'Databricks ML / Feature Store (Zone 60)',
+    systemName: 'Databricks ML Workspace (Zone 60)',
     zoneId: 'zone_3',
     zoneTitle: 'Zone 3: Discovery, Access & Consumption',
-    zoneSub: 'DataHub · security service · Power BI',
-    boundaryTag: 'INSIDE DATABRICKS',
+    zoneSub: 'DataHub · security service · Power BI · Data Science',
+    boundaryTag: 'DATABRICKS · ZONE 60',
     badgeStyle: {
       bg: 'bg-sky-500/20',
       text: 'text-sky-300',
@@ -284,7 +284,7 @@ export const PLATFORM_METADATA: Record<string, PlatformMetadata> = {
     authoritativeFor: 'Data science feature engineering, ML models, and predictive enrichments',
     mustNotHold: 'Unversioned or untagged production model endpoints',
     placementDetails:
-      'Inside Databricks (Zone 60 Workspace). Data scientists consume curated data products and act as second-tier producers of ML features.',
+      'Inside Databricks (Zone 60 Workspace). Sits in Zone 3 because data scientists consume served data products from Stage 5 & 7 and act as secondary producers of ML features/models. Positioned in the consumption layer rather than the core DxD production pipeline (Zones 10–50); governance status remains unconfirmed.',
   },
   s11: {
     platformId: 'home_undecided',

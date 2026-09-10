@@ -118,16 +118,15 @@ export const ZoneBoundariesLayer: React.FC<ZoneBoundariesLayerProps> = ({ nodes 
             height: zoneBounds.zone_2.height,
           }}
         >
-          {/* Top Rail: Databricks boundary begins */}
+          {/* Top Header: Databricks / UC Core Pipeline */}
           <div className="absolute -top-3.5 left-6 right-6 flex items-center justify-between gap-3 pointer-events-auto">
             <div className="flex items-center gap-2 bg-[#0d1527] px-3 py-1 rounded-full border border-sky-400/60 shadow-lg text-sky-300 text-[11px] font-bold tracking-wide">
               <Server size={12} className="text-sky-400 animate-pulse" />
-              <span className="flex items-center gap-1">
-                <ArrowDown size={11} className="text-sky-400" />
-                DATABRICKS PLATFORM BOUNDARY BEGINS
+              <span className="flex items-center gap-1.5">
+                ZONE 2: DATABRICKS & UNITY CATALOG CORE PIPELINE
               </span>
               <span className="text-sky-400/60 text-[10px] font-medium hidden md:inline">
-                · Data enters the platform here (DxD owns · Zones 10–50)
+                · DxD Governed Platform (Zones 10–50)
               </span>
             </div>
 
@@ -181,13 +180,13 @@ export const ZoneBoundariesLayer: React.FC<ZoneBoundariesLayerProps> = ({ nodes 
             </div>
           )}
 
-          {/* Bottom Rail: Databricks boundary ends */}
-          <div className="absolute -bottom-3.5 left-6 right-6 flex items-center justify-between pointer-events-auto">
-            <div className="flex items-center gap-2 bg-[#0d1527] px-3 py-1 rounded-full border border-sky-400/60 shadow-lg text-sky-300 text-[11px] font-bold tracking-wide">
-              <ArrowDown size={11} className="text-sky-400" />
-              <span>DATABRICKS PLATFORM BOUNDARY ENDS</span>
-              <span className="text-sky-400/60 text-[10px] font-medium hidden md:inline">
-                · Data leaves for enterprise discovery & consumption tools
+          {/* Bottom Egress: Core pipeline hand-off */}
+          <div className="absolute -bottom-3 left-6 right-6 flex items-center justify-between pointer-events-auto">
+            <div className="flex items-center gap-2 bg-[#0d1527] px-3 py-0.5 rounded-full border border-sky-400/40 shadow-lg text-sky-300 text-[10px] font-semibold tracking-wide">
+              <ArrowDown size={10} className="text-sky-400" />
+              <span>Core Pipeline Egress (Stage 7 Serving)</span>
+              <span className="text-sky-400/60 text-[9.5px] font-normal hidden md:inline">
+                · Hand-off to Discovery, Consumption & ML Workspaces
               </span>
             </div>
           </div>

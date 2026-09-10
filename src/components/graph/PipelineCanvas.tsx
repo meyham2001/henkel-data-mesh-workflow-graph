@@ -286,7 +286,7 @@ export const PipelineCanvas: React.FC = () => {
           <div className="h-3.5 w-px bg-border"></div>
           <span className="px-2.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300 font-semibold text-[11px] border border-sky-500/30">
             {selectedPlatformFilter === 'inside_databricks'
-              ? 'Inside Databricks & Unity Catalog Platform Boundary'
+              ? 'Inside Databricks & Unity Catalog Platform'
               : selectedPlatformFilter === 'unity_catalog'
               ? 'Unity Catalog Metastore & Access Layer'
               : selectedPlatformFilter === 'outside_databricks'
