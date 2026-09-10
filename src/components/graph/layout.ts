@@ -21,7 +21,10 @@ export function getLayoutedElements(
     marginy: 50,
   });
 
-  nodes.forEach((node) => {
+  // 1. Separate pipeline stages from cross-cutting governance entities
+  const pipelineNodes = nodes.filter((n) => !n.id.startsWith('x-'));
+
+  pipelineNodes.forEach((node) => {
     dagreGraph.setNode(node.id, {
       width: node.measured?.width || NODE_WIDTH,
       height: node.measured?.height || NODE_HEIGHT,
@@ -29,6 +32,11 @@ export function getLayoutedElements(
   });
 
   edges.forEach((edge) => {
+    // Skip cross-cutting edges in Dagre rank calculation so they don't skew the pipeline spine
+    if (edge.source.startsWith('x-') || edge.target.startsWith('x-')) {
+      return;
+    }
+
     let weight = 5;
     let minlen = 1;
 
@@ -52,11 +60,6 @@ export function getLayoutedElements(
       weight = 10;
       minlen = 1;
     }
-    // Cross-cutting governance links (x-uc, x-dh, x-git, x-gov)
-    else if (edge.source.startsWith('x-')) {
-      weight = 1;
-      minlen = 1;
-    }
     // ML Feature store branch (s10b) & Discovery branch (s8)
     else if (edge.target === 's10b' || edge.target === 's8') {
       weight = 3;
@@ -68,17 +71,53 @@ export function getLayoutedElements(
 
   dagre.layout(dagreGraph);
 
-  const layoutedNodes = nodes.map((node) => {
+  // 2. Map pipeline stages and find the maximum right edge of the pipeline
+  let maxPipelineRight = -Infinity;
+  const layoutedPipelineMap = new Map<string, { x: number; y: number }>();
+
+  pipelineNodes.forEach((node) => {
     const nodeWithPosition = dagreGraph.node(node.id);
     const width = node.measured?.width || NODE_WIDTH;
     const height = node.measured?.height || NODE_HEIGHT;
+    const x = Math.round(nodeWithPosition.x - width / 2);
+    const y = Math.round(nodeWithPosition.y - height / 2);
 
+    layoutedPipelineMap.set(node.id, { x, y });
+    if (x + width > maxPipelineRight) {
+      maxPipelineRight = x + width;
+    }
+  });
+
+  // 3. Position cross-cutting governance entities in a dedicated lane on the right
+  // This completely prevents them from intersecting or overlapping the Databricks Zone 2 boundary
+  const governanceLaneX = Math.round(maxPipelineRight + 95);
+
+  const crossCuttingYAnchorMap: Record<string, string> = {
+    'x-uc': 's2',   // Unity Catalog aligns with Stage 2 Raw
+    'x-git': 's5',  // Git aligns with Stage 5 Curated
+    'x-dh': 's8',   // DataHub aligns with Stage 8 Discovery
+    'x-gov': 's9',  // Governance function aligns with Stage 9 Access
+  };
+
+  const layoutedNodes = nodes.map((node) => {
+    if (node.id.startsWith('x-')) {
+      const anchorId = crossCuttingYAnchorMap[node.id];
+      const anchorPos = anchorId ? layoutedPipelineMap.get(anchorId) : null;
+      const y = anchorPos ? anchorPos.y : 200;
+
+      return {
+        ...node,
+        position: {
+          x: governanceLaneX,
+          y,
+        },
+      };
+    }
+
+    const pos = layoutedPipelineMap.get(node.id) || { x: 0, y: 0 };
     return {
       ...node,
-      position: {
-        x: Math.round(nodeWithPosition.x - width / 2),
-        y: Math.round(nodeWithPosition.y - height / 2),
-      },
+      position: pos,
     };
   });
 

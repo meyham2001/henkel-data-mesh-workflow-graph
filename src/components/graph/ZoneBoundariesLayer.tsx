@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Node, useViewport } from '@xyflow/react';
-import { Server, Database, Sparkles, Layers, ShieldCheck, AlertCircle, ArrowDown } from 'lucide-react';
+import { Server, Database, Sparkles, Layers, AlertCircle, ArrowDown } from 'lucide-react';
 import { ZONE_DEFINITIONS, ArchitectureZoneId } from '../../data/platformPlacement';
 import { useAppStore } from '../../store/appStore';
 
@@ -246,26 +246,6 @@ export const ZoneBoundariesLayer: React.FC<ZoneBoundariesLayerProps> = ({ nodes 
         </div>
       )}
 
-      {/* Cross-Cutting: Metadata & Governance */}
-      {zoneBounds.cross_cutting && (
-        <div
-          className="absolute rounded-3xl border-2 border-purple-500/40 bg-purple-950/[0.12] transition-all duration-300"
-          style={{
-            left: zoneBounds.cross_cutting.x,
-            top: zoneBounds.cross_cutting.y,
-            width: zoneBounds.cross_cutting.width,
-            height: zoneBounds.cross_cutting.height,
-          }}
-        >
-          <div className="absolute top-3 left-4 flex items-center gap-2 pointer-events-auto">
-            <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-purple-950/90 border border-purple-500/40 text-purple-300 text-[11px] font-bold uppercase tracking-wider shadow-sm">
-              <ShieldCheck size={12} className="text-purple-400" />
-              <span>Metadata & Governance</span>
-              <span className="text-purple-400/60 font-normal">· Applies Across All Stages</span>
-            </span>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
