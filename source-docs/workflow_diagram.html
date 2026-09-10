@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Henkel data mesh — end-to-end workflow</title>
+<style>
+  :root{
+    --bg:#0b0d12;
+    --z1:#1b1d30; --z1c:#242742; --z1a:#8b8fd6;
+    --z2:#122238; --z2c:#1a2f4d; --z2a:#6aa9e8;
+    --z3:#0f2b28; --z3c:#153b36; --z3a:#5cc9b0;
+    --z4:#2b1719; --z4c:#3a1f22; --z4a:#e08a7a;
+    --text:#eef0f6; --dim:#a2a9bd; --mute:#6b7189;
+    --ok:#5cb87a; --partial:#e8b25e; --missing:#e8756a;
+    --panel:#141824; --border:rgba(255,255,255,.09);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,sans-serif;
+    padding:34px 18px 70px;-webkit-font-smoothing:antialiased;
+    transition:padding-right .38s cubic-bezier(.22,.75,.3,1),
+               padding-bottom .38s cubic-bezier(.22,.75,.3,1)}
+  .wrap{max-width:1080px;margin:0 auto;
+    transition:max-width .38s cubic-bezier(.22,.75,.3,1)}
+  /* full width when nothing is selected; shrinks to make room for the drawer */
+  @media(min-width:1000px){
+    body.panel-open{padding-right:min(478px,46vw)}
+    body.panel-open .wrap{max-width:900px}
+  }
+  @media(max-width:999px){
+    body.panel-open{padding-bottom:64vh}
+  }
+  h1{font-size:22px;font-weight:650;margin:0 0 6px;letter-spacing:-.01em}
+  .lede{color:var(--dim);font-size:13.5px;margin:0 0 16px;max-width:760px;line-height:1.7}
+  .subtitle{color:var(--mute);font-size:12.5px;margin:0 0 20px;letter-spacing:.01em}
+  .docmeta{display:flex;gap:14px;flex-wrap:wrap;font-size:10px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--mute);margin:0 0 12px;font-weight:700}
+  .docmeta span:not(:last-child)::after{content:"";margin-left:14px;
+    border-left:1px solid rgba(255,255,255,.18);padding-left:0}
+  .footer{margin:34px 0 0;padding:14px 16px;border-top:1px solid var(--border);
+    font-size:10.5px;color:var(--mute);line-height:1.65}
+  .verswitch{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 20px;padding:12px 14px;
+    background:var(--panel);border:1px solid var(--border);border-radius:11px}
+  .verlabel{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);
+    font-weight:700;width:100%;margin-bottom:2px}
+  .verbtn{font-size:11.5px;padding:8px 13px;border-radius:8px;cursor:pointer;
+    background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--dim);
+    transition:all .18s ease;font-weight:600}
+  .verbtn:hover{background:rgba(255,255,255,.08);color:var(--text)}
+  .verbtn.on{background:rgba(255,255,255,.12);border-color:#fff;color:#fff}
+  .verbtn .pill{font-size:8.5px;padding:1px 6px;border-radius:9px;margin-left:6px;font-weight:800}
+  .verbtn[data-ver="opt1"] .pill{background:rgba(92,184,122,.22);color:var(--ok)}
+  .verbtn[data-ver="opt2"] .pill{background:rgba(232,178,94,.22);color:var(--partial)}
+  .bdc-node{border:1.5px dashed #7bc17b;border-radius:10px;padding:11px 14px;margin:0 0 9px;
+    background:rgba(123,193,123,.07);display:none;
+    transition:opacity .3s ease,transform .3s ease}
+  .bdc-node.show{display:block}
+  .bdc-node .shead{color:#7bc17b}
+  #s1b-live{transition:opacity .25s ease}
+  .stats{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 16px}
+  .stat{flex:1;min-width:130px;background:var(--panel);border:1px solid var(--border);
+    border-radius:10px;padding:13px 15px;cursor:pointer;
+    transition:border-color .2s ease,transform .15s ease,background .2s ease}
+  .stat:hover{border-color:rgba(255,255,255,.28);transform:translateY(-2px)}
+  .stat::after{content:"view detail 92";display:block;font-size:9px;color:var(--mute);
+    margin-top:6px;opacity:0;transition:opacity .2s ease;letter-spacing:.03em}
+  .stat:hover::after{opacity:.8}
+  .stat.active{border-color:#fff;box-shadow:0 0 0 1px #fff}
+  .stat .num{font-size:26px;font-weight:700;line-height:1;letter-spacing:-.02em;
+    font-variant-numeric:tabular-nums}
+  .stat:nth-child(1) .num{color:var(--ok)}
+  .stat:nth-child(2) .num{color:var(--partial)}
+  .stat:nth-child(3) .num{color:var(--missing)}
+  .stat:nth-child(4) .num{color:var(--dim)}
+  .stat .lab{font-size:10.5px;color:var(--mute);margin-top:6px;letter-spacing:.03em}
+  .bar{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin:0 0 26px;
+    font-size:11.5px;color:var(--dim);padding:11px 14px;background:var(--panel);
+    border:1px solid var(--border);border-radius:9px}
+  .bar span{display:flex;align-items:center;gap:6px}
+  .dot{width:8px;height:8px;border-radius:50%}
+  .dot.ok{background:var(--ok)}.dot.partial{background:var(--partial)}.dot.missing{background:var(--missing)}
+  .swatch{width:12px;height:12px;border-radius:3px}
+
+  .zone{border-radius:16px;padding:16px 16px 12px;margin:0 0 14px;
+    border:1px dashed rgba(255,255,255,.14)}
+  .zone.z2{border:2px solid var(--z2a);box-shadow:0 0 0 4px rgba(106,169,232,.10)}
+  .zone,.ucbox,.xlayer{cursor:pointer;transition:box-shadow .22s ease,border-color .22s ease}
+  .zone:hover,.ucbox:hover,.xlayer:hover{border-color:rgba(255,255,255,.32)}
+  .zone.z2:hover{border-color:#9ccbf5}
+  .zone.csel,.ucbox.csel,.xlayer.csel{box-shadow:0 0 0 2px #fff,0 8px 30px rgba(0,0,0,.5)}
+  .zhead,.xlabel,.uclabel{position:relative}
+  .zhead::after{content:"click for detail";font-size:9px;letter-spacing:.05em;
+    color:var(--mute);opacity:0;transition:opacity .2s ease;margin-left:auto;
+    text-transform:none;font-weight:600;white-space:nowrap}
+  .zone:hover>.zhead::after{opacity:.85}
+  .rail{display:flex;align-items:center;gap:10px;margin:0 0 12px;
+    font-size:9.5px;letter-spacing:.14em;font-weight:800;color:var(--z2a);text-transform:uppercase}
+  .rail::before,.rail::after{content:"";flex:1;height:1px;background:var(--z2a);opacity:.45}
+  .rail.exit{margin:12px 0 0}
+  .rail.r3{color:var(--z3a)} .rail.r3::before,.rail.r3::after{background:var(--z3a)}
+  .rail.r4{color:var(--z4a)} .rail.r4::before,.rail.r4::after{background:var(--z4a)}
+  .homenote{font-size:10.5px;color:var(--mute);line-height:1.6;margin:12px 2px 0;
+    padding:9px 11px;background:rgba(255,255,255,.04);border-radius:7px}
+  .plat.loop{background:rgba(232,178,94,.22);color:var(--partial)}
+  .loopnote{font-size:10.5px;line-height:1.6;margin:12px 0;padding:10px 13px;
+    border:1px dashed var(--partial);border-radius:9px;color:var(--partial);
+    background:rgba(232,178,94,.06)}
+  .loopnote b{color:var(--partial)}
+  .plat{font-size:9px;padding:2px 7px;border-radius:4px;font-weight:700;letter-spacing:.04em}
+  .plat.in{background:rgba(106,169,232,.20);color:var(--z2a)}
+  .plat.out{background:rgba(255,255,255,.08);color:var(--mute)}
+  .ucbox{border:1px solid rgba(106,169,232,.45);border-radius:12px;
+    padding:26px 14px 14px;position:relative;margin:22px 0 4px;
+    background:rgba(106,169,232,.05)}
+  .uclabel{position:absolute;top:-8px;left:18px;background:var(--z2);padding:2px 10px;
+    font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;
+    color:var(--z2a);border-radius:5px;line-height:1.4}
+  .ucnote{font-size:10.5px;color:var(--mute);line-height:1.55;margin:8px 2px 0;font-style:italic}
+  .compute{font-size:10px;color:var(--mute);margin:10px 2px 14px;padding:9px 12px;
+    background:rgba(255,255,255,.04);border-radius:7px;line-height:1.55}
+  .xlayer{border:1px solid rgba(160,138,224,.45);border-radius:14px;padding:24px 16px 14px;
+    position:relative;margin:0 0 16px;
+    background:linear-gradient(90deg,rgba(160,138,224,.10),rgba(160,138,224,.05),rgba(160,138,224,.10))}
+  .xlabel{position:absolute;top:-10px;left:18px;background:var(--bg);padding:0 9px;
+    font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:#a08ae0}
+  .xgrid{display:flex;gap:10px;flex-wrap:wrap}
+  .xcard{flex:1;min-width:210px;background:rgba(255,255,255,.05);border-radius:9px;
+    padding:11px 13px;border:1px solid rgba(255,255,255,.08);cursor:pointer;
+    transition:background .15s}
+  .xcard:hover{background:rgba(255,255,255,.09)}
+  .xcard h4{margin:0 0 5px;font-size:12.5px;font-weight:650;display:flex;
+    align-items:center;gap:7px;flex-wrap:wrap}
+  .xcard p{margin:0;font-size:11px;color:var(--dim);line-height:1.5}
+  .xnote{font-size:10.5px;color:var(--mute);font-style:italic;line-height:1.55;margin:11px 2px 0}
+  .zone.z1{background:var(--z1)} .zone.z2{background:var(--z2)}
+  .zone.z3{background:var(--z3)} .zone.z4{background:var(--z4)}
+  .zhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+    flex-wrap:wrap;margin:0 0 14px}
+  .zlabel{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;font-weight:700}
+  .z1 .zlabel{color:var(--z1a)} .z2 .zlabel{color:var(--z2a)}
+  .z3 .zlabel{color:var(--z3a)} .z4 .zlabel{color:var(--z4a)}
+  .zsub{font-size:10.5px;color:var(--mute)}
+
+  .stage{border-radius:10px;padding:12px 14px;cursor:pointer;margin-bottom:9px;
+    border:1px solid rgba(255,255,255,.08);border-left-width:3px;
+    transition:transform .12s,box-shadow .22s ease,opacity .22s ease,border-color .2s ease}
+  .z1 .stage{background:var(--z1c)} .z2 .stage{background:var(--z2c)}
+  .z3 .stage{background:var(--z3c)} .z4 .stage{background:var(--z4c)}
+  .stage:hover{transform:translateX(3px)}
+  .stage.ok{border-left-color:var(--ok)}
+  .stage.partial{border-left-color:var(--partial)}
+  .stage.missing{border-left-color:var(--missing)}
+  .stage.active{box-shadow:0 0 0 2px #fff,0 4px 18px rgba(0,0,0,.5);transform:translateX(3px)}
+  .stage.up{box-shadow:0 0 0 2px var(--z2a),0 4px 14px rgba(0,0,0,.4)}
+  .stage.down{box-shadow:0 0 0 2px var(--z3a),0 4px 14px rgba(0,0,0,.4)}
+  .stage.dim{opacity:.72;border-left-color:rgba(255,255,255,.18)!important}
+  .stage.dim .sname{color:var(--dim)}
+  .badge{font-size:9px;font-weight:800;letter-spacing:.08em;padding:2px 7px;
+    border-radius:4px;margin-left:auto;white-space:nowrap}
+  .badge.sel{background:#fff;color:#111}
+  .badge.upb{background:var(--z2a);color:#0b1a2b}
+  .badge.downb{background:var(--z3a);color:#08201c}
+  .shead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .snum{font-size:10.5px;color:var(--mute);font-weight:700;min-width:56px;letter-spacing:.05em}
+  .sname{font-size:14px;font-weight:620}
+  .smeta{font-size:11.5px;color:var(--dim);margin:5px 0 0 66px;line-height:1.5}
+  .chip{font-size:9.5px;padding:2px 7px;border-radius:20px;background:rgba(255,255,255,.09);
+    color:var(--dim);font-weight:600;letter-spacing:.02em}
+  .flow{position:relative;height:26px;margin:0;font-size:0;color:transparent}
+  .flow::before{content:"";position:absolute;left:50%;top:2px;bottom:2px;width:2px;
+    transform:translateX(-50%);border-radius:2px;
+    background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.22),rgba(255,255,255,.05))}
+  .flow::after{content:"";position:absolute;left:50%;width:5px;height:5px;border-radius:50%;
+    margin-left:-2.5px;background:rgba(255,255,255,.75);
+    box-shadow:0 0 7px rgba(255,255,255,.55);
+    animation:flowdot 2.8s cubic-bezier(.5,0,.5,1) infinite}
+  @keyframes flowdot{
+    0%{top:0;opacity:0} 12%{opacity:.9} 78%{opacity:.9} 100%{top:22px;opacity:0}}
+  .zone.z2 .flow::after{background:var(--z2a);box-shadow:0 0 8px var(--z2a)}
+  .zone.z3 .flow::after{background:var(--z3a);box-shadow:0 0 8px var(--z3a)}
+  .zone.z4 .flow::after{background:var(--z4a);box-shadow:0 0 8px var(--z4a)}
+  .zone.z1 .flow::after{background:var(--z1a);box-shadow:0 0 8px var(--z1a)}
+  .flow.lit-up::before{background:linear-gradient(180deg,rgba(106,169,232,.15),var(--z2a),rgba(106,169,232,.15));width:3px}
+  .flow.lit-up::after{background:var(--z2a);box-shadow:0 0 10px var(--z2a);animation-duration:1.4s}
+  .flow.lit-down::before{background:linear-gradient(180deg,rgba(92,201,176,.15),var(--z3a),rgba(92,201,176,.15));width:3px}
+  .flow.lit-down::after{background:var(--z3a);box-shadow:0 0 10px var(--z3a);animation-duration:1.4s}
+  .flow:nth-of-type(even)::after{animation-delay:.9s}
+  .flow:nth-of-type(3n)::after{animation-delay:1.7s}
+
+  #panel{
+    position:fixed; right:20px; top:22px; width:min(430px,42vw);
+    max-height:calc(100vh - 44px); overflow-y:auto; z-index:60;
+    background:rgba(18,22,33,.95); backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+    border:1px solid rgba(255,255,255,.16); border-radius:14px;
+    padding:18px 20px 22px; box-shadow:0 18px 50px rgba(0,0,0,.6);
+    opacity:0; pointer-events:none; transform:translateX(26px) scale(.985);
+    transition:opacity .26s ease,
+               transform .34s cubic-bezier(.22,.75,.3,1);
+  }
+  #panel.open{
+    opacity:1; pointer-events:auto; transform:none;
+    transition:opacity .3s ease,
+               transform .38s cubic-bezier(.22,.75,.3,1);
+  }
+  #panel h2{font-size:15.5px;font-weight:650;margin:0 34px 4px 0}
+  #panel .psub{font-size:11.5px;color:var(--dim);margin:0 0 13px}
+  #panel .pbody{font-size:12.5px;line-height:1.7}
+  #panel .pbody p{margin:0 0 9px}
+  #pclose{
+    position:absolute; top:12px; right:12px; width:26px; height:26px;
+    border-radius:7px; border:1px solid rgba(255,255,255,.16);
+    background:rgba(255,255,255,.07); color:var(--dim); cursor:pointer;
+    font-size:15px; line-height:1; display:flex; align-items:center;
+    justify-content:center; padding:0;
+  }
+  #pclose:hover{background:rgba(255,255,255,.14); color:var(--text)}
+  #hint{
+    position:fixed; left:50%; transform:translateX(-50%); bottom:16px;
+    background:rgba(18,22,33,.92); border:1px solid rgba(255,255,255,.14);
+    border-radius:20px; padding:7px 15px; font-size:11.5px; color:var(--dim);
+    z-index:40; backdrop-filter:blur(8px); pointer-events:none;
+    transition:opacity .25s ease, transform .25s ease;
+  }
+  #hint.hide{opacity:0; transform:translateX(-50%) translateY(10px)}
+  @media(max-width:900px){
+    #panel{
+      right:10px; left:10px; top:auto; bottom:0; width:auto;
+      max-height:62vh; border-radius:16px 16px 0 0;
+      border-bottom:none; padding:16px 16px 20px;
+      transform:translateY(28px) scale(1);
+    }
+    #panel.open{transform:translateY(0)}
+  }
+  .lin{display:flex;gap:20px;flex-wrap:wrap;margin:0 0 14px;padding:11px 13px;
+    background:rgba(255,255,255,.035);border-radius:8px;font-size:12px}
+  .lin div{flex:1;min-width:180px}
+  .lin b{display:block;font-size:10px;letter-spacing:.07em;text-transform:uppercase;
+    margin-bottom:5px;font-weight:700}
+  .lin .u b{color:var(--z2a)} .lin .d b{color:var(--z3a)}
+  .lin ul{margin:0;padding-left:15px;color:var(--dim)}
+  .tag{display:inline-block;font-size:10px;padding:3px 9px;border-radius:5px;
+    margin:0 6px 6px 0;font-weight:650;letter-spacing:.03em}
+  .tag.ok{background:rgba(92,184,122,.16);color:var(--ok)}
+  .tag.partial{background:rgba(232,178,94,.16);color:var(--partial)}
+  .tag.missing{background:rgba(232,117,106,.16);color:var(--missing)}
+  .gap{background:rgba(232,117,106,.07);border-left:2px solid var(--missing);
+    border-radius:0 7px 7px 0;padding:11px 14px;margin-top:11px;font-size:12.5px;line-height:1.65}
+  .note{background:rgba(255,255,255,.04);border-left:2px solid var(--z3a);
+    border-radius:0 7px 7px 0;padding:11px 14px;margin-top:11px;font-size:12.5px;line-height:1.65}
+  h3.sec{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--mute);
+    margin:32px 0 11px;font-weight:700}
+  table.bd{border-collapse:collapse;width:100%;font-size:12px;background:var(--panel);
+    border-radius:9px;overflow:hidden}
+  table.bd th,table.bd td{border-bottom:1px solid var(--border);padding:9px 12px;text-align:left;vertical-align:top}
+  table.bd th{color:var(--dim);font-weight:650;background:rgba(255,255,255,.03)}
+  code{background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px;font-size:11.5px}
+  .kpi-item{padding:11px 0;border-top:1px solid var(--border)}
+  .kpi-item:first-of-type{border-top:none}
+  .kpi-item-h{font-size:12px;font-weight:650;margin-bottom:4px;color:var(--text)}
+  .kpi-item .pbody{font-size:11.5px;color:var(--dim)}
+  .kpi-click{cursor:pointer;border-radius:7px;margin:0 -8px;padding:11px 8px;
+    transition:background .15s ease}
+  .kpi-click:hover{background:rgba(255,255,255,.05)}
+  .kpi-click .kpi-item-h::after{content:" 92";color:var(--mute)}
+  .reveal{opacity:0;transform:translateY(14px);
+    transition:opacity .5s cubic-bezier(.22,.75,.3,1),transform .5s cubic-bezier(.22,.75,.3,1)}
+  .reveal.in{opacity:1;transform:none}
+  @media(prefers-reduced-motion:reduce){
+    .reveal{opacity:1!important;transform:none!important}
+    .flow::after{animation:none!important;display:none}
+    *,#panel,.wrap,body,#hint{transition:none!important}
+  }
+  @media(max-width:640px){
+    body{padding:20px 12px 60px}
+    .smeta{margin-left:0;margin-top:7px}
+    .snum{min-width:auto}
+    .shead{gap:7px}
+    .bar span:first-child{width:100%}
+    .bar{gap:12px}
+    table.bd{display:block;overflow-x:auto;white-space:nowrap}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="docmeta"><span>Data Architecture</span><span>Current state assessment</span><span>Draft for discussion</span></div>
+  <h1>Henkel Data Mesh &mdash; Current State Assessment</h1>
+  <p class="subtitle">End-to-end data flow, ownership, and capability gaps &middot; source system to consumed data product</p>
+  <p class="lede"><b>Headline finding:</b> the platform can build data products; the capability to operate them is largely absent. Delivery stages are established (green); intake and operational stages are not (red).</p><p class="lede" style="margin-top:-10px">Select any stage or container for ownership, artefacts and identified gaps. Related stages are marked <b>&uarr; UPSTREAM</b> and <b>&darr; DOWNSTREAM</b>.</p>
+
+  <div class="verswitch" id="verswitch">
+    <span class="verlabel">CIN replacement &mdash; view against Henkel's documented options</span>
+    <div class="verbtn on" data-ver="current">Current state</div>
+    <div class="verbtn" data-ver="opt1">Option 1 <span class="pill">preferred</span></div>
+    <div class="verbtn" data-ver="opt2">Option 2 <span class="pill">backup</span></div>
+  </div>
+
+  <div class="stats" id="stats">
+    <div class="stat" data-stat="ok"><div class="num" data-k="ok">0</div><div class="lab">Stages established</div></div>
+    <div class="stat" data-stat="partial"><div class="num" data-k="partial">0</div><div class="lab">Partially in place</div></div>
+    <div class="stat" data-stat="missing"><div class="num" data-k="missing">0</div><div class="lab">Absent or unowned</div></div>
+    <div class="stat" data-stat="gaps"><div class="num" data-k="gaps">0</div><div class="lab">Identified gaps</div></div>
+  </div>
+
+  <div class="bar">
+    <span><i class="dot ok"></i> Exists</span>
+    <span><i class="dot partial"></i> Partial</span>
+    <span><i class="dot missing"></i> Missing</span>
+    <span style="margin-left:auto"><i class="swatch" style="background:var(--z2a)"></i> upstream &mdash; flows into the selected stage</span>
+    <span><i class="swatch" style="background:var(--z3a)"></i> downstream &mdash; receives from it</span>
+    <span style="width:100%;color:var(--mute);padding-top:2px">Solid blue border = the Databricks boundary. Dashed borders are flow phases, not systems.</span>
+  </div>
+
+  <div class="xlayer" data-id="c-x">
+    <span class="xlabel">Metadata &amp; governance &mdash; applies across all stages</span>
+    <div class="xgrid">
+      <div class="xcard" data-id="x-uc">
+        <h4>Unity Catalog <span class="plat in">INSIDE DATABRICKS</span></h4>
+        <p>Technical metadata, schema, lineage, <b>access enforcement</b>. Stores no data itself. Spans stages 2&ndash;9 &mdash; it also issues the grants at Stage 9 and produces the lineage DataHub ingests at Stage 8.</p>
+      </div>
+      <div class="xcard" data-id="x-dh">
+        <h4>DataHub <span class="plat out">OUTSIDE DATABRICKS</span></h4>
+        <p>Business glossary, certified definitions, cross-platform discovery. Outside Databricks. Enforces nothing.</p>
+      </div>
+      <div class="xcard" data-id="x-git">
+        <h4>Git (Azure DevOps) <span class="plat out">AUTHORED HERE</span><span class="plat in">DEPLOYED TO UC</span></h4>
+        <p>Data contracts, product specs, pipeline code, CI checks. Git is the <b>system of record</b>; the contract is <b>deployed into Databricks</b> as comments, tags and constraints. Same content, one authority.</p>
+      </div>
+      <div class="xcard" data-id="x-gov">
+        <h4>Governance function <span class="plat out">NOT A SYSTEM</span></h4>
+        <p>Policy, classification taxonomy, the standard definitions must meet. Organisational &mdash; a team, not a platform.</p>
+      </div>
+    </div>
+    <p class="xnote"><b>&ldquo;Cross-cutting&rdquo; here means spans many stages &mdash; not outside Databricks.</b> Unity Catalog is <i>inside</i> the platform boundary (and appears again as the nested box below); DataHub is a genuinely separate system; Git is where contracts and pipeline code are <i>authored</i> before deploying into Databricks; governance is a team, not a platform. What they share is that none of them is a step in the flow.<br><br>Metadata and governance being split across three systems plus a team is why authority must be assigned explicitly: <b>the same fact held authoritatively in two places is how enforcement and display diverge.</b></p>
+  </div>
+
+  <div class="zone z1" data-id="c-z1">
+    <div class="zhead"><span class="zlabel">Before the platform</span><span class="zsub">Business + ADF</span></div>
+    <div class="stage missing" data-id="s0">
+      <div class="shead"><span class="snum">STAGE 0</span><span class="sname">Demand &amp; intake</span><span class="chip">Business owner</span><span class="chip">DxD</span></div>
+      <div class="smeta">Captures owner, named consumer, required freshness — the three facts that cannot be automated</div>
+    </div>
+    <div class="flow">&#8595;</div>
+    <div class="stage ok" data-id="s1">
+      <div class="shead"><span class="snum">STAGE 1</span><span class="sname">Source extraction</span><span class="chip">ADF</span><span class="chip">P47 for SAP</span><span class="plat out">OUTSIDE DATABRICKS</span></div>
+      <div class="smeta">~40 source systems via ADF &middot; <b>SAP via P47</b>, which feeds both Synapse and CIN &middot; P47 committed for 3 years</div>
+    </div>
+  </div>
+
+  <div class="flow">&#8595;</div>
+
+  <div class="zone z2" data-id="c-z2">
+    <div class="zhead"><span class="zlabel">Databricks / Unity Catalog</span><span class="zsub">DxD owns · zones 10–50</span></div>
+    <div class="rail">Databricks boundary begins &mdash; data enters the platform here</div>
+    <div class="compute"><b>Compute layer</b> (SQL warehouses, Lakeflow pipelines, notebooks) executes every transformation below. It sits inside Databricks but <b>not</b> inside Unity Catalog &mdash; UC governs the data, compute processes it.</div>
+    <div class="bdc-node" id="bdc-node">
+      <div class="shead"><span class="snum">SAP BDC</span><span class="sname">Business Data Cloud &middot; BDC Connect</span><span class="chip">Delta Share</span></div>
+      <div class="smeta">P47&#39;s confirmed successor. Delivers directly into Databricks via Delta (Open) Share &mdash; not a custom-built pipeline</div>
+    </div>
+    <div class="stage missing" data-id="s1b" id="s1b-live">
+      <div class="shead"><span class="snum">STAGE 1b</span><span class="sname">CIN &mdash; Central Ingestion</span><span class="plat in">INSIDE DATABRICKS</span><span class="plat loop">being restructured</span></div>
+      <div class="smeta">Ingests everything regardless of domain &middot; <b>not a data product</b> &mdash; fails all four qualification tests</div>
+    </div>
+    <div class="ucbox" data-id="c-uc">
+    <span class="uclabel">Unity Catalog &mdash; metadata &amp; access layer &middot; metastore &rarr; catalog &rarr; schema &rarr; table</span>
+    <div class="stage ok" data-id="s2">
+      <div class="shead"><span class="snum">STAGE 2</span><span class="sname">Zone 10 Raw · Zone 15 External</span><span class="chip">self_ / external_</span></div>
+      <div class="smeta">Unmodified landing · vendor feeds quarantined separately</div>
+    </div>
+    <div class="flow">&#8595;</div>
+    <div class="stage ok" data-id="s3">
+      <div class="shead"><span class="snum">STAGE 3</span><span class="sname">Zone 20 Staging</span><span class="chip">self_</span></div>
+      <div class="smeta">Typing and conforming only · identifiers domain-qualified here</div>
+    </div>
+    <div class="flow">&#8595;</div>
+    <div class="stage ok" data-id="s4">
+      <div class="shead"><span class="snum">STAGE 4</span><span class="sname">Zone 30 Enriched</span><span class="chip">self_</span><span class="chip">rules by business owner</span></div>
+      <div class="smeta">Business rules applied · first joins to master data via source_ mirrors</div>
+    </div>
+    <div class="flow">&#8595;</div>
+    <div class="stage partial" data-id="s5">
+      <div class="shead"><span class="snum">STAGE 5</span><span class="sname">Zone 40 Curated + publish</span><span class="chip">shared_</span></div>
+      <div class="smeta">Where trust is created — or, currently, isn't</div>
+    </div>
+    <div class="flow">&#8595;</div>
+    <div class="stage partial" data-id="s6">
+      <div class="shead"><span class="snum">STAGE 6</span><span class="sname">Cross-product mirroring</span><span class="chip">source_</span></div>
+      <div class="smeta">Consumer mirrors producer's shared_ view into its own catalog · highest-risk stage</div>
+    </div>
+    <div class="flow">&#8595;</div>
+    <div class="stage partial" data-id="s7">
+      <div class="shead"><span class="snum">STAGE 7</span><span class="sname">Zone 50 Serving</span><span class="plat in">UNITY CATALOG</span><span class="plat out">+ AZURE SQL</span></div>
+      <div class="smeta">Aggregation, denormalisation, access tiers, format conversion</div>
+    </div>
+    <div class="ucnote">Every zone above is a UC schema &mdash; the zones are not a separate system, they are naming inside Unity Catalog. UC also reaches <b>outside this box</b>: it issues the grants in Stage 9 and produces the lineage DataHub ingests in Stage 8.</div>
+    </div>
+    <div class="rail exit">Databricks boundary ends &mdash; data leaves for consumption tools</div>
+  </div>
+
+  <div class="flow">&#8595;</div>
+
+  <div class="zone z3" data-id="c-z3">
+    <div class="zhead"><span class="zlabel">Discovery, access &amp; consumption</span><span class="zsub">DataHub · security service · Power BI</span></div>
+    <div class="stage partial" data-id="s8">
+      <div class="shead"><span class="snum">STAGE 8</span><span class="sname">Discovery</span><span class="chip">DataHub</span><span class="plat out">OUTSIDE DATABRICKS</span></div>
+      <div class="smeta">Lineage populated · glossary near-empty · still rolling out</div>
+    </div>
+    <div class="flow">&#8595;</div>
+    <div class="stage partial" data-id="s9">
+      <div class="shead"><span class="snum">STAGE 9</span><span class="sname">Access authorisation</span><span class="chip">UC grants</span><span class="plat in">UNITY CATALOG &mdash; same UC as above</span><span class="plat out">+ SECURITY SERVICE</span></div>
+      <div class="smeta">AD groups per product/env &middot; PII masked in view DDL — dev masked, prod unmasked &middot; ABAC status unknown</div>
+    </div>
+    <div class="flow">&#8595;</div>
+    <div class="stage partial" data-id="s10">
+      <div class="shead"><span class="snum">STAGE 10</span><span class="sname">Consumption</span><span class="chip">Power BI</span><span class="plat out">OUTSIDE DATABRICKS</span></div>
+      <div class="smeta">Competing against the data warehouse as a consumption alternative — see Stage 1/2 for its (one-way) data relationship to Databricks</div>
+    </div>
+    <div class="flow">&#8595;</div>
+    <div class="stage partial" data-id="s10b">
+      <div class="shead"><span class="snum">STAGE 10b</span><span class="sname">Enriched analytical products</span><span class="chip">Zone 60 Workspace?</span><span class="plat loop">2nd producer</span></div>
+      <div class="smeta">Data scientists consume products <b>and build their own</b> &middot; governance status unknown</div>
+    </div>
+    <div class="loopnote"><b>Synapse and Databricks: one-way, not circular.</b> SAP feeds Synapse and Databricks (CIN) independently and in parallel via P47. Separately, Synapse's own modelled output passes into Databricks &mdash; one direction only. <b>Databricks does not feed Synapse.</b> Decommissioning therefore means redeveloping the business logic currently inside Synapse, near-source or natively in Databricks, for every product that consumes its modelled output &mdash; already an explicit workstream in both of Henkel's documented options (see the version switcher above), not a dependency to untangle.</div>
+    <div class="homenote"><b>System placement:</b> Discovery is DataHub (outside Databricks). Consumption is Power BI and applications (outside), with Synapse operating in parallel as an established alternative. <b>Access authorisation is the only stage that straddles the boundary</b> &mdash; Unity Catalog issues and enforces grants inside Databricks, while the security service gates frontend consumption outside it. That split is the reason classification-tag authority requires explicit assignment.</div>
+  </div>
+
+  <div class="flow">&#8595;</div>
+
+  <div class="zone z4" data-id="c-z4">
+    <div class="zhead"><span class="zlabel">Operate &amp; evolve</span><span class="zsub">largest capability gap &middot; ownership unassigned</span></div>
+    <div class="rail r4">Largely unbuilt &middot; system ownership not yet assigned</div>
+    <div class="stage missing" data-id="s11">
+      <div class="shead"><span class="snum">STAGE 11</span><span class="sname">Operate</span><span class="plat out">HOME UNDECIDED</span></div>
+      <div class="smeta">Breaks traced manually, step by step · no monitoring, no alerting</div>
+    </div>
+    <div class="flow">&#8595;</div>
+    <div class="stage missing" data-id="s12">
+      <div class="shead"><span class="snum">STAGE 12</span><span class="sname">Evolve &amp; retire</span><span class="plat out">HOME UNDECIDED</span></div>
+      <div class="smeta">No breaking-change policy · no impact analysis · no retirement process</div>
+    </div>
+    <div class="homenote"><b>System placement: largely unassigned.</b> The components would naturally divide &mdash; monitoring and freshness checks as Databricks jobs (inside), impact analysis from Unity Catalog lineage (inside), contract versioning and change policy in Git (outside), alerting into Teams or ServiceNow (outside), and the retirement decision as an organisational one with no system involved. <b>None of this has been assigned.</b> The gap is not only absent capability but an unowned segment of the lifecycle.</div>
+  </div>
+
+  <h3 class="sec">System boundaries &mdash; authoritative source per artefact</h3>
+  <table class="bd">
+    <tr><th>System</th><th>Authoritative for</th><th>Must NOT hold</th></tr>
+    <tr><td>Source systems</td><td>Operational truth as generated</td><td>Analytical logic</td></tr>
+    <tr><td>ADF</td><td>Ingestion orchestration</td><td>Business transformation</td></tr>
+    <tr><td><b>Databricks / UC</b></td><td>All data, transformation, access enforcement, <b>classification tags for enforcement</b></td><td>Glossary or contract as system of record</td></tr>
+    <tr><td><b>Git (Azure DevOps)</b></td><td>Pipeline code, <b>data contracts</b>, product specs, CI checks</td><td>Data</td></tr>
+    <tr><td><b>DataHub</b></td><td>Glossary, certified definitions, discovery, aggregated lineage</td><td>Access enforcement</td></tr>
+    <tr><td>Security service</td><td>Frontend consumption authorisation</td><td>Storage or transformation</td></tr>
+    <tr><td>Power BI / apps</td><td>Presentation, application logic</td><td>Metric definitions</td></tr>
+  </table>
+
+  <h3 class="sec">Recommended sequence</h3>
+  <div class="zone z3" style="padding-top:16px">
+    <div class="stage" data-id="cp" style="border-left-color:var(--z3a)">
+      <div class="shead"><span class="snum">SEQUENCE</span><span class="sname">Confirm ABAC &rarr; Contracts &rarr; Monitoring &rarr; Usage measurement &rarr; Definitions &rarr; NL access &rarr; DWH migration</span></div>
+      <div class="smeta">Select for dependencies and parallel workstreams</div>
+    </div>
+  </div>
+
+  <div class="footer">Assessment based on confirmed discovery to date. Items marked as unknown remain open and are listed in the accompanying discovery register. Findings shown here are subject to confirmation with the platform, governance and PMO functions.</div>
+
+  <div id="panel" aria-hidden="true"><button id="pclose" aria-label="Close">&times;</button><div id="pcontent"></div></div>
+  <div id="hint">Click any stage or card for detail — the panel opens beside it, the page won't jump</div>
+</div>
+
+<script>
+var LIN={
+ s0:{u:[],d:["s1"]}, s1:{u:["s0","s10"],d:["s1b"]}, s1b:{u:["s1"],d:["s2"]}, s2:{u:["s1b"],d:["s3"]},
+ s3:{u:["s2"],d:["s4"]}, s4:{u:["s3"],d:["s5"]}, s5:{u:["s4"],d:["s6","s7","s8"]},
+ s6:{u:["s5"],d:["s4","s7"]}, s7:{u:["s5","s6"],d:["s9","s10"]},
+ s8:{u:["s5"],d:["s10"]}, s9:{u:["s7"],d:["s10"]}, s10:{u:["s7","s8","s9"],d:["s11","s1"]}, s10b:{u:["s5","s7"],d:["s10"]},
+ s11:{u:["s10"],d:["s12"]}, s12:{u:["s11"],d:["s0"]}, cp:{u:[],d:[]}
+};
+var NAME={s0:"Demand & intake",s1:"Source extraction",s1b:"CIN — Central Ingestion",s2:"Raw / External",s3:"Staging",
+ s4:"Enriched",s5:"Curated + publish",s6:"Cross-product mirroring",s7:"Serving",
+ s8:"Discovery",s9:"Access authorisation",s10:"Consumption",s10b:"Enriched analytical products",s11:"Operate",s12:"Evolve & retire"};
+
+function tag(c,l){return '<span class="tag '+c+'">'+l+'</span>';}
+function gap(h){return '<div class="gap">'+h+'</div>';}
+function note(h){return '<div class="note">'+h+'</div>';}
+function lineage(id){
+  var l=LIN[id]; if(!l||(!l.u.length&&!l.d.length))return '';
+  function li(a){return a.length?'<ul>'+a.map(function(x){return '<li>'+NAME[x]+'</li>'}).join('')+'</ul>':'<ul><li style="color:var(--mute)">&mdash;</li></ul>';}
+  return '<div class="lin"><div class="u"><b>&uarr; Upstream &mdash; flows into this</b>'+li(l.u)+'</div><div class="d"><b>&darr; Downstream &mdash; receives from this</b>'+li(l.d)+'</div></div>';
+}
+
+var D={
+ s0:{n:"Stage 0 &mdash; Demand &amp; intake",s:"Business domain (business owner) with DxD &middot; currently informal",
+  b:tag('missing','MISSING as a formal step')+"<p>Someone identifies a question the business can't answer, and a product request is raised: business owner, named consumer, the question, required freshness, sensitivity.</p><p>Produces the record that <b>pre-fills the contract</b> &mdash; so nobody writes one later. This is how &lsquo;fully automated contracts&rsquo; reconciles with the three facts that can't be inferred.</p>"+
+  gap("<b>Why this matters more than it looks.</b> Owner, named consumer and promised SLA are decisions, not observations &mdash; no system can infer them. This is also the only structural guard against building products nobody asked for, which is very plausibly why some existing products have no identifiable consumer. Without a real intake gate, &lsquo;named consumer&rsquo; becomes a field filled in retrospectively &mdash; worse than not having it.")},
+
+ s1:{n:"Stage 1 &mdash; Source extraction",s:"DxD platform &middot; ADF",
+  b:tag('ok','EXISTS')+"<p>Scheduled extraction from ~40 source systems: SAP ECC, CRM, PIM, MES, sensor platforms, external data providers. SharePoint, FTP, APIs, file drops.</p><p><b>SAP is extracted via P47</b>, which delivers to <b>two</b> destinations: Synapse (the DWH) and CIN in Databricks.</p>"+
+  note("<b>P47 is committed for at least three years</b> &mdash; a management decision, and a way of saying it will be replaced. Any domain routing logic placed inside P47 gets rebuilt at that point. This is the deciding criterion in the CIN replacement decision, and its effect becomes visible only when the replacement is planned.")+
+  note("<b>Correction: Synapse is not bidirectional with Databricks.</b> SAP feeds both Synapse and Databricks in parallel via P47, independently. Separately, Synapse's own modelled output passes into Databricks &mdash; one direction only. <b>Databricks does not feed Synapse.</b> This is a one-way logic dependency, not a loop.<br><br>Decommissioning Synapse means <i>redeveloping the business logic currently inside it</i> &mdash; near-source or natively in Databricks &mdash; for every product consuming its modelled output. Already named in Henkel's own plan: Option 1/2 Phase 1 both state this migration explicitly (see the CIN version switcher above).<br><br><b>Nobody currently has the list</b> of which products consume Synapse-modelled data. Answerable from lineage.")+
+  gap("<b>Missing:</b> notification when a source schema changes upstream. Today that's discovered when something downstream breaks.")},
+
+ s1b:{n:"Stage 1b &mdash; CIN (Central Ingestion)",s:"Ownership unassigned &middot; restructuring confirmed by management decision",
+  b:tag('missing','WILL NOT REMAIN IN THIS FORM')+"<p>Ingests all incoming data regardless of domain, then feeds domain products. SAP reaches it via <b>P47</b>, which also feeds Synapse.</p>"+
+  gap("<b>CIN is not a data product.</b> It fails all four qualification questions:<br>&bull; <b>Named consumer?</b> Every domain &mdash; functionally the same as none<br>&bull; <b>Changeable without sign-off?</b> No. Any SAP source change affects everyone<br>&bull; <b>Changes as a unit?</b> No. Changes whenever <i>any</i> source changes<br>&bull; <b>Requested by name?</b> No. Consumers ask for their domain's data<br><br>It is <b>Zone 10 for the whole estate, mislabelled as a product</b>. Management independently concluded it cannot stay &mdash; corroborating the assessment independently.")+
+  note("<b>This resolves a common confusion: zones do not move.</b> Zones are schema naming inside each domain's own catalog &mdash; every product already has <code>self_{module}_raw</code>. CIN was somebody else's Zone 10 sitting outside their catalog. Under either documented option, only what <i>feeds</i> Zone 10 changes.")+
+  note("<b>Two real, named options are in active Henkel planning</b> &mdash; not a framework proposed here. See the version switcher above: <b>Option 1 (Distributed, preferred)</b> and <b>Option 2 (Centralized / &lsquo;thin CIN&rsquo;, backup)</b>. Source: internal <i>&ldquo;BI Evolution &amp; Platform - Data Mesh Evaluation&rdquo;</i> document.")},
+
+ s2:{n:"Stage 2 &mdash; Zone 10 Raw &middot; Zone 15 External",s:"DxD, product-aligned &middot; self_{module}_raw",
+  b:tag('ok','EXISTS')+"<p>Lands unmodified. Third-party feeds land separately in an external zone &mdash; quarantined because Henkel doesn't control those schemas and they can change without notice.</p><p><b>Rule:</b> no typing, no renaming, no filtering. Raw is the audit trail back to source.</p>"+
+  gap("<b>Missing:</b> schema-drift detection at landing &mdash; the cheapest possible early warning, currently absent.")},
+
+ s3:{n:"Stage 3 &mdash; Zone 20 Staging",s:"DxD, product-aligned &middot; self_{module}_staging",
+  b:tag('ok','EXISTS')+"<p>Typing and conforming only. Vendor-shaped columns mapped to Henkel conventions. Generic identifiers domain-qualified &mdash; <code>consumerID</code> becomes something unambiguous.</p><p><b>Test:</b> &ldquo;is this the right type?&rdquo; belongs here. &ldquo;Should this record count?&rdquo; does not.</p>"+
+  gap("<b>Missing:</b> an agreed, enforced naming convention for identifier disambiguation &mdash; without one, five engineers invent five conventions. Also: automated convention compliance in CI. Non-conforming schema naming has already been observed in the estate.")},
+
+ s4:{n:"Stage 4 &mdash; Zone 30 Enriched",s:"DxD implements &middot; business owner defines the rules",
+  b:tag('ok','EXISTS')+"<p>Business rules applied. First joins to master and reference data, via <code>source_</code> mirrors rather than reaching into another product's tables directly.</p>"+
+  gap("<b>Missing:</b> data quality expectations &mdash; nothing currently fails a pipeline on bad data. And business rules live in SQL while the <i>reason</i> for them usually doesn't.")},
+
+ s5:{n:"Stage 5 &mdash; Zone 40 Curated + publish",s:"DxD technical owner &middot; business domain accountable &middot; shared_{module}_curated",
+  b:tag('partial','PARTIAL')+"<p>The product reaches stable form and publishes <code>shared_</code> views for other products to mirror. Publishing is a deliberate act per entity, not automatic.</p>"+
+  gap("<b>This is where trust is created &mdash; and currently isn't.</b> Missing: data contract, freshness declaration, consistent documentation, certification status. A consumer looking at a curated product today cannot determine what it guarantees, how current it is, or who is accountable.")+
+  note("<b>Contract ownership, proposed:</b> DxD authors the technical content (generated from the platform anyway); the <b>business owner signs off on the guarantees</b> &mdash; a promise about freshness is a business commitment, not a technical one.")},
+
+ s6:{n:"Stage 6 &mdash; Cross-product mirroring",s:"Consuming product team (DxD) &middot; source_{producer}_{module}_{layer}",
+  b:tag('partial','PARTIAL')+"<p>A product needing another's data creates a <code>source_</code> mirror in <b>its own</b> catalog, pointing at the producer's published <code>shared_</code> view. Observed in the estate: <code>source_cma_material_curated</code>, <code>source_csc_def_curated</code>, <code>source_sbi_def_curated</code>.</p><p>The mirror is a view &mdash; no data copied, never stale.</p>"+
+  gap("<b>The architecture map makes this the highest-risk stage.</b> Dependency density means one upstream change propagates widely. Missing: producer awareness of who mirrors them, and impact analysis before a change ships. Lineage shows it technically &mdash; but nobody gets <i>notified</i>.")},
+
+ s7:{n:"Stage 7 &mdash; Zone 50 Serving",s:"DxD / Application teams &middot; + Azure SQL",
+  b:tag('partial','PARTIAL')+"<p>Consumption-optimised structures: aggregation, denormalisation, dimensional shaping, format conversion, access tiering.</p>"+
+  gap("<b>Missing:</b> systematic access tiering (full / PII-stripped / aggregated variants) rather than case-by-case. And certified metric definitions attached to what's served.")},
+
+ s8:{n:"Stage 8 &mdash; Discovery",s:"DataHub team owns the surface &middot; product owners author the content",
+  b:tag('partial','PARTIAL')+"<p>DataHub ingests Databricks, Power BI, SAP and the DWH. <b>Lineage is populated across sources.</b> The glossary holds only a handful of terms &mdash; it is still rolling out.</p>"+
+  note("<b>Definitions chain, corrected:</b> owners author &rarr; governance defines the <i>standard</i> and audits conformance &rarr; DataHub presents &rarr; applications consume. Governance should not <i>maintain</i> definitions; that recentralises content and rebuilds the bottleneck.")+
+  gap("<b>Second consumption barrier.</b> Products can't be used if they can't be found or understood. Missing: certified definitions at scale, consumer-facing quality and freshness signals, product status visibility.")},
+
+ s9:{n:"Stage 9 &mdash; Access authorisation",s:"Governance sets policy &middot; DxD implements &middot; security service gates frontends",
+  b:tag('partial','PARTIAL')+"<p>Unity Catalog grants via AD groups (<code>APP-HDP-PP-[product]-[env]</code>). Catalog owner is <code>hdp_ppr_catalogmanager</code>; product AD groups own <code>self_</code> and <code>shared_</code> schemas.</p>"+
+  note("<b>PII masking today:</b> written <i>per column into the view DDL</i> at view-creation time. Each entity produces a <b>masked view for dev</b> and an <b>unmasked view for prod</b>. Databricks' built-in masking is unused &mdash; the approach predates it.<br><br><b>This is a legitimate workaround, not an oversight:</b> UC table-level masks cannot be applied to views, and consumers here read views. It was the only pre-ABAC mechanism.<br><br><b>But it is environment separation, not access control</b> &mdash; a user with prod access sees unmasked values regardless of role. <b>Open question:</b> what protects prod PII from users with access but no business need? If the answer is table grants, the control is coarser than it appears.")+
+  gap("<b>Unknown and blocking:</b> is ABAC enabled? Is automated classification on? One question to the platform team &mdash; it determines whether governance automation is configuration or construction.<br><br>The stakes are higher than they look: on a <b>view-based</b> consumption model, ABAC is the <i>only</i> mechanism that provides per-user enforcement at all. Migrating from DDL masking is a project with regression risk across every view, not a config change.")+
+  note("<b>Classification tag authority is undecided</b> &mdash; tags currently originate in both Databricks and DataHub. Recommendation: Databricks authoritative for enforcement (ABAC reads them), DataHub ingests for display. A divergence means a column can look protected in the catalogue while being exposed in practice.")},
+
+ s10:{n:"Stage 10 &mdash; Consumption",s:"Application teams (Power BI) &middot; business users",
+  b:tag('partial','PARTIAL')+"<p>Power BI applications built on data products. This exists and works.</p>"+
+  gap("<b>The DWH still runs &mdash; this is the crux.</b> Data products aren't competing against nothing; they compete against a familiar system with years of accumulated trust. &lsquo;People don't see the benefit&rsquo; is a statement about products <i>relative to the DWH</i>. A product that merely exists loses that comparison.<br><br>Also missing: natural-language access, and any measurement of actual usage per product.")},
+
+ s10b:{n:"Stage 10b &mdash; Enriched analytical products",s:"Data scientists &middot; a second producer population",
+  b:tag('partial','EXISTS &mdash; GOVERNANCE UNKNOWN')+"<p>Data scientists both consume data products <b>and create their own enriched ones</b>. They were missing from the original operating model entirely.</p>"+
+  note("<b>This narrows the capability constraint.</b> &lsquo;Domains lack technical capability&rsquo; applies to business domain teams, not to everyone outside DxD. Some population here can build independently &mdash; which is a materially more optimistic finding than the operating model implies.")+
+  gap("<b>Unknown and important:</b> do these products follow the <code>self_</code>/<code>shared_</code>/<code>source_</code> convention? Are they discoverable, contracted, consumed by anyone?<br><br>If governed &rarr; evidence self-service <i>can</i> work here. If not &rarr; shadow products inside the governed platform, the failure mode a mesh exists to prevent.<br><br>Likely the answer to what <b>Zone 60 Workspace</b> is for &mdash; previously an open question.")},
+
+ s11:{n:"Stage 11 &mdash; Operate",s:"DxD",
+  b:tag('missing','LARGELY MISSING')+"<p>When a pipeline breaks today, engineers trace it manually, step by step, until they find where.</p>"+
+  gap("<b>Missing:</b> automated break detection &middot; freshness SLA monitoring &middot; structured incident events &middot; consumer notification when a product they depend on breaks.<br><br>This is the biggest cluster of absent capability, and it's what turns a built estate into a trusted one.")+
+  note("<b>Agent-readiness is earned here, at no extra cost.</b> Build monitoring to emit <i>structured events</i> rather than emails, with scoped actions and service-principal identity, and agents later become a configuration decision rather than a re-architecture. Build no agent infrastructure now.")},
+
+ s12:{n:"Stage 12 &mdash; Evolve &amp; retire",s:"Business owner decides &middot; DxD executes",
+  b:tag('missing','MISSING')+"<p>Missing: breaking-change policy and notice period, consumer impact analysis, contract versioning, retirement process.</p>"+
+  gap("<b>Retirement deserves emphasis.</b> With a large estate and an unknown share lacking consumers, the ability to <i>retire</i> products is as valuable as the ability to build them. Maintaining products nobody uses is a permanent tax on DxD capacity.")+
+  note("Feeds back to Stage 0: a retirement or change decision re-enters the intake process rather than happening informally.")},
+
+ "x-uc":{n:"Unity Catalog",s:"INSIDE Databricks &middot; spans stages 2&ndash;9 &middot; authoritative for enforcement",
+  b:"<p><b>Stores no data.</b> It holds, for every table: the schema, the storage location, the owner, the lineage, and who may query it &mdash; checked fresh on every request, not cached.</p><p>Hierarchy: <b>metastore</b> (one per account) &rarr; <b>catalog</b> (a product namespace, <code>hdp_{product}_{env}</code>) &rarr; <b>schema</b> (a zone or module) &rarr; <b>table</b> (real Delta files) or <b>view</b> (stored SQL, re-run live).</p>"+
+  note("<b>Authoritative for: classification tags used in enforcement.</b> ABAC reads these. If DataHub also claims authority and the two diverge, a column can appear protected in the catalogue everyone browses while being exposed in practice. Recommendation: UC authoritative for enforcement, DataHub ingests for display.")+
+  gap("<b>Unknown:</b> whether ABAC and automated classification are enabled in this environment. One question to the platform team, and it determines whether governance automation is configuration or construction.")},
+
+ "x-dh":{n:"DataHub",s:"Outside Databricks &middot; enforces nothing",
+  b:"<p>Ingests Databricks, Power BI, SAP and the DWH. Lineage populated across sources. The business glossary holds only a handful of terms &mdash; still rolling out.</p><p>Its job is <b>search, glossary, certified definitions and cross-platform discovery</b>. It is a meaning surface, not a control plane.</p>"+
+  note("<b>Definitions chain:</b> owners author &rarr; governance defines the <i>standard</i> and audits conformance &rarr; DataHub presents &rarr; applications consume. Governance should not <i>maintain</i> definitions &mdash; that recentralises content and rebuilds the bottleneck.")+
+  gap("<b>Unresolved:</b> who authors metric definitions. Placed with the Application team by the DataHub team, unconfirmed. It determines whether the semantic layer is yours to build, theirs, or joint.")},
+
+ "x-git":{n:"Git (Azure DevOps)",s:"System of record for contracts &middot; deployed into Unity Catalog",
+  b:"<p><b>A contract is an integral part of the data product &mdash; and it does live in Databricks.</b> It is simply not <i>authored</i> there. The distinction matters:</p><ul><li><b>Authored and versioned in Git</b> &mdash; because a contract is a negotiated promise. It needs diff, review before a change ships, and CI validation (a schema change without a contract-version bump fails the build). UC has no way to review a change before it takes effect.</li><li><b>Deployed into Unity Catalog</b> &mdash; as table and column comments, tags and informational constraints. A consumer browsing Catalog Explorer sees the table, not the source repository. Guarantees that aren't attached to the object may as well not exist.</li></ul><p>This mirrors the established handling of DDL and pipeline code, which are also version-controlled and deployed into Unity Catalog.</p>"+
+  gap("<b>Contracts do not exist today.</b> Nothing guards against pipeline breakage; breaks are traced manually, step by step. This is the single clearest opening &mdash; uncontested, painful, demonstrable.")+
+  gap("<b>Deployment is lossy, and that is a real gap.</b> Unity Catalog has comments, tags and informational PK/FK constraints &mdash; but <b>no first-class contract object</b>. Freshness SLAs and breaking-change policy have nowhere native to go beyond a comment. The projection into UC primitives is therefore partial, and the Git copy stays authoritative.")+
+  note("<b>What Git does not solve:</b> whether the pipeline honours the promise at runtime. A declared freshness SLA still needs separate monitoring to catch a breach. The contract file enforces nothing by existing.")},
+
+ "x-gov":{n:"Governance function",s:"Organisational, not a system",
+  b:"<p>Owns <b>policy</b>, the classification taxonomy, approval, and the <i>standard</i> that definitions and contracts must meet. Not the content itself.</p><p>The division: governance authors the rules &middot; architecture makes them executable and automatic &middot; DataHub presents what exists. Neither adjacent function owns the experience of producing a data product &mdash; that is the gap this programme fills.</p>"+
+  gap("<b>Current implementation state is unknown.</b> What has actually been published, which policies are tool-enforced versus people-followed, and whether a federated body with domain representation exists &mdash; all unanswered.")+
+  note("Absent genuine federation, the substitute mechanism for keeping standards proportionate is the pruning discipline: any criterion that has never caused a rejection or a fix is ceremony, and gets dropped at review.")},
+
+ "c-z1":{n:"Before the platform",s:"Source systems + ADF &middot; entirely outside Databricks",
+  b:"<p>Everything upstream of the platform boundary: ~40 source systems (SAP ECC, CRM, PIM, MES, sensor platforms, external data providers) plus the ADF pipelines that extract from them.</p><p><b>Henkel does not control these schemas.</b> A vendor upgrade or a CRM migration can rename or restructure a field with no notice and no negotiation.</p>"+
+  note("<b>This is why Raw and External exist as separate absorption zones.</b> The mesh needs one deliberately narrow, well-understood place to catch that instability before it propagates into five domains' curated tables. Raw is Henkel's own data landed as-is; External is a third party's export whose schema can drift without warning.")+
+  gap("<b>Also missing:</b> Stage 0 (intake) has no formal existence, so the three facts that cannot be automated &mdash; owner, named consumer, promised SLA &mdash; are captured inconsistently or not at all.")+note("<b>Synapse's relationship to this zone is one-way, not circular.</b> SAP feeds Synapse and Databricks independently and in parallel; separately, Synapse's own modelled output passes one-way into Databricks. Decommissioning means redeveloping that logic, not untangling a dependency.")},
+
+ "c-z2":{n:"Databricks / Unity Catalog",s:"The platform boundary &middot; DxD owns &middot; zones 10&ndash;50",
+  b:"<p><b>This is a system boundary, not a phase.</b> The other bands group stages by what they do; this one is drawn solid because it marks where data physically enters and leaves the platform.</p><p>Everything with a <code>catalog.schema.table</code> address is inside here. The zones are not a separate system &mdash; they are schema naming inside Unity Catalog.</p>"+
+  note("<b>Two distinct things live inside this boundary.</b> The <b>compute layer</b> (SQL warehouses, Lakeflow pipelines, notebooks) executes the transformations. <b>Unity Catalog</b> governs the data &mdash; schema, location, lineage, permissions. Compute processes; UC governs. Conflating them is the most common source of confusion about what Databricks actually is.")+
+  gap("<b>What is strong here:</b> stages 2&ndash;4 are solidly built. <b>What is not:</b> from Curated onward (stages 5&ndash;7) the structure exists but the guarantees do not &mdash; no contracts, no freshness declarations, no certification status. The estate can be built; it cannot yet be trusted.")},
+
+ "c-uc":{n:"Unity Catalog",s:"Metadata and access layer &middot; spans stages rather than sitting between them",
+  b:"<p>Every zone inside this box is a UC schema. <b>UC stores no data itself</b> &mdash; it holds, for each table: schema, storage location, owner, lineage, and who may query it, checked fresh on every request.</p><p>Hierarchy: <b>metastore</b> (one per account) &rarr; <b>catalog</b> (<code>hdp_{product}_{env}</code>) &rarr; <b>schema</b> (a zone or module) &rarr; <b>table</b> (real Delta files) or <b>view</b> (stored SQL, re-executed live &mdash; no files at all).</p>"+
+  note("<b>UC is not confined to this box.</b> It issues the grants used at Stage 9 and produces the lineage DataHub ingests at Stage 8. It is a layer that spans the flow, not a segment of it &mdash; which is why drawing it as a box that stops at Serving would be misleading without this note.")+
+  gap("<b>The consumption boundary matters here.</b> Consumers read <code>shared_</code> views. UC table-level column masks <b>cannot be applied to views</b> &mdash; which is why masking is currently written into view DDL instead, and why ABAC is the only mechanism that would give per-user enforcement on a view-based model.")},
+
+ "c-z3":{n:"Discovery, access &amp; consumption",s:"Straddles the Databricks boundary",
+  b:"<p><b>Mostly outside Databricks, with one exception.</b> Discovery is DataHub (outside). Consumption is Power BI and applications (outside). <b>Access authorisation straddles</b> &mdash; Unity Catalog issues and enforces grants inside, while the security service gates frontend consumption outside.</p>"+
+  gap("<b>This band contains the actual adoption problem.</b> Products exist and are not used, for four reasons: cannot trust it (no contracts), cannot find it (DataHub near-empty), cannot understand it (no certified definitions), and do not need to (the DWH still works).<br><br>The fourth is not a tooling problem, and it is likely the largest.")+
+  note("<b>Also here: a second producer population.</b> Data scientists consume products <i>and</i> build their own enriched ones &mdash; which narrows the &lsquo;domains lack technical capability&rsquo; constraint to business domain teams specifically, and is probably what Zone 60 Workspace is for.")},
+
+ "c-z4":{n:"Operate &amp; evolve",s:"Largest capability gap &middot; ownership not yet assigned",
+  b:"<p>Monitoring, break detection, freshness enforcement, breaking-change policy, impact analysis, retirement. <b>Almost none of it exists.</b> When a pipeline breaks today, engineers trace it manually, step by step.</p>"+
+  gap("<b>The gap is not only missing capability &mdash; it is an unowned part of the lifecycle.</b> The pieces would naturally split: monitoring and freshness as Databricks jobs (inside), impact analysis from UC lineage (inside), contract versioning and change policy in Git (outside), alerting into Teams or ServiceNow (outside), and the retirement decision organisational (no system at all). <b>None of this has been assigned.</b><br><br>The distinction is material: missing capability is addressed once prioritised, whereas an unowned lifecycle stage does not appear on any team's roadmap.")+
+  note("<b>Agent-readiness is earned here at no extra cost.</b> Build monitoring to emit <i>structured events</i> rather than emails, with scoped actions and service-principal identity, and agents later become a configuration decision rather than a re-architecture. Build no agent infrastructure now.")},
+
+ "c-x":{n:"Metadata &amp; governance",s:"Applies across all stages &middot; not a stage in the flow",
+  b:"<p><b>These apply across stages rather than sitting between them. They are not all external to Databricks</b> &mdash; the four items sit in three different places:</p><ul><li><b>Unity Catalog</b> &mdash; inside Databricks; also shown as the nested layer within the platform boundary</li><li><b>DataHub</b> &mdash; a genuinely separate system</li><li><b>Git</b> &mdash; where contracts and pipeline code are <i>authored</i>; both deploy into Databricks. Not a parallel store</li><li><b>Governance</b> &mdash; a team, not a platform at all</li></ul><p>Their common property is that none is a step in the flow; each applies across all of it.</p>"+
+  note("<b>The governing rule:</b> the same fact held authoritatively in two places is how enforcement and display diverge. Assign authority explicitly, per fact. Recommended: <b>UC authoritative for classification tags used in enforcement</b> (ABAC reads them), DataHub ingests for display.")+
+  gap("<b>Two unresolved authority questions:</b> who authors metric definitions (Application team, per DataHub &mdash; unconfirmed), and confirming the contract arrangement: authored in Git, deployed into UC, ingested by DataHub for discovery. Both are cheap to settle now and expensive after both systems are populated.")},
+
+ cp:{n:"Recommended sequence",s:"Sequenced against the confirmed constraint: consumption, not production",
+  b:"<p><b>1 &middot; Ask whether ABAC is on</b> &mdash; today, one question. Blocks all governance automation planning.</p><p><b>2 &middot; Contracts on one pipeline</b> (Q1) &mdash; trust. Uncontested, painful today, demonstrable, and it lays the machine-readable foundation everything automated depends on.</p><p><b>3 &middot; Freshness + break detection</b> (Q1/Q2) &mdash; trust, and it stops the manual tracing.</p><p><b>4 &middot; Usage measurement</b> (Q2) &mdash; reveals which products actually matter.</p><p><b>5 &middot; Certified definitions</b> (Q2) &mdash; understandability.</p><p><b>6 &middot; NL access over certified products</b> (Q3) &mdash; effortless consumption, and the most direct answer to &lsquo;people don't see the benefit&rsquo;.</p><p><b>7 &middot; DWH migration path</b> &mdash; ongoing, and the real adoption test.</p>"+
+  gap("<b>The dependency easy to get wrong:</b> definitions (5) depend on knowing which products matter (4). Certifying the whole estate would burn months on products nobody uses. Measure usage first, certify what's used.")+
+  note("<b>Runs in parallel, not on the critical path:</b> the golden path template (DxD engineering efficiency, not an adoption lever), governance automation at scale, and the retirement process.")}
+};
+
+/* ---- scroll reveal ---- */
+(function(){
+  var targets=document.querySelectorAll(".stage, .xcard, .zone, .ucbox, .xlayer, .compute, .loopnote, .homenote, table.bd");
+  targets.forEach(function(el,i){ el.classList.add("reveal"); el.style.transitionDelay=(Math.min(i,8)*35)+"ms"; });
+  if(!("IntersectionObserver" in window)){
+    targets.forEach(function(el){el.classList.add("in")}); return;
+  }
+  var io=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); } });
+  },{rootMargin:"0px 0px -8% 0px",threshold:.06});
+  targets.forEach(function(el){io.observe(el)});
+})();
+
+/* ---- connector highlight follows selection ---- */
+function markFlows(){
+  document.querySelectorAll(".flow").forEach(function(f){
+    f.classList.remove("lit-up","lit-down");
+    var prev=f.previousElementSibling, next=f.nextElementSibling;
+    function has(el,c){ return el && el.classList && el.classList.contains(c); }
+    if(has(prev,"active")||has(next,"active")||has(prev,"up")||has(next,"up")) f.classList.add("lit-up");
+    if(has(prev,"down")||has(next,"down")) f.classList.add("lit-down");
+  });
+}
+
+/* ---- headline statistics, derived from the diagram ---- */
+(function(){
+  var counts={
+    ok:document.querySelectorAll('.stage.ok').length,
+    partial:document.querySelectorAll('.stage.partial').length,
+    missing:document.querySelectorAll('.stage.missing').length,
+    gaps:Object.keys(D).reduce(function(n,k){
+      return n+((D[k].b||"").match(/class="gap"/g)||[]).length; },0)
+  };
+  var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.querySelectorAll('#stats .num').forEach(function(el){
+    var target=counts[el.dataset.k]||0;
+    if(reduce){ el.textContent=target; return; }
+    var start=null, dur=900;
+    function step(ts){
+      if(!start)start=ts;
+      var p=Math.min((ts-start)/dur,1);
+      el.textContent=Math.round(target*(1-Math.pow(1-p,3)));
+      if(p<1)requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  });
+})();
+
+var nodes=document.querySelectorAll(".stage, .xcard, .zone, .ucbox, .xlayer"),
+    panel=document.getElementById("panel"),
+    pcontent=document.getElementById("pcontent"),
+    hint=document.getElementById("hint"),
+    active=null;
+
+function closePanel(){
+  clearAll(); active=null;
+  panel.classList.remove("open");
+  panel.setAttribute("aria-hidden","true");
+  document.body.classList.remove("panel-open");
+  hint.classList.remove("hide");
+  markFlows();
+}
+var pcloseBtn=document.getElementById("pclose");
+if(pcloseBtn)pcloseBtn.addEventListener("click",closePanel);
+document.addEventListener("keydown",function(e){ if(e.key==="Escape")closePanel(); });
+
+function clearAll(){
+  nodes.forEach(function(x){
+    x.classList.remove("active","up","down","dim","csel");
+    var b=x.querySelector(":scope > .shead > .badge"); if(b)b.remove();
+  });
+  document.querySelectorAll(".stat.active").forEach(function(c){c.classList.remove("active")});
+}
+function isContainer(el){ return el.classList.contains("zone")||el.classList.contains("ucbox")||el.classList.contains("xlayer"); }
+function contains(id){
+  var el=document.querySelector('[data-id="'+id+'"]'); if(!el)return [];
+  return Array.prototype.map.call(el.querySelectorAll('.stage[data-id], .xcard[data-id]'),
+    function(x){ return NAME[x.dataset.id] || x.querySelector('.sname,h4').textContent; });
+}
+function addBadge(el,cls,txt){
+  var head=el.querySelector(".shead");
+  if(!head)return;
+  var b=document.createElement("span");
+  b.className="badge "+cls; b.textContent=txt;
+  head.appendChild(b);
+}
+
+/* ---- KPI cards: click to open a modal listing what the number represents ---- */
+(function(){
+  var STATUS_LABEL={ok:"Established",partial:"Partial",missing:"Absent or unowned"};
+
+  function stagesWithStatus(cls){
+    return Array.prototype.map.call(
+      document.querySelectorAll(".stage."+cls+"[data-id]"),
+      function(el){
+        var id=el.dataset.id;
+        return {
+          id:id,
+          title:(D[id]&&D[id].n)||el.querySelector(".sname").textContent,
+          sub:(D[id]&&D[id].s)||""
+        };
+      });
+  }
+
+  function extractGaps(){
+    var out=[];
+    Object.keys(D).forEach(function(id){
+      var html=D[id].b||"";
+      var re=/<div class="gap">([\s\S]*?)<\/div>/g, m;
+      while((m=re.exec(html))){
+        out.push({id:id, title:D[id].n, html:m[1]});
+      }
+    });
+    return out;
+  }
+
+  function statModal(kind){
+    var title, bodyHtml;
+    if(kind==="gaps"){
+      var gaps=extractGaps();
+      title="Identified gaps ("+gaps.length+")";
+      bodyHtml='<p class="psub" style="margin-bottom:14px">Every gap statement attached to a stage or container below, grouped by where it was found. Select any entry to open that item.</p>'
+        +gaps.map(function(g){
+            return '<div class="kpi-item kpi-click" data-jump="'+g.id+'"><div class="kpi-item-h">'+g.title+'</div><div class="pbody">'+g.html+'</div></div>';
+          }).join("");
+    } else {
+      var items=stagesWithStatus(kind);
+      title=STATUS_LABEL[kind]+" ("+items.length+")";
+      bodyHtml='<p class="psub" style="margin-bottom:14px">Stages currently assessed as '+STATUS_LABEL[kind].toLowerCase()+".</p>"
+        +items.map(function(it){
+            return '<div class="kpi-item kpi-click" data-jump="'+it.id+'"><div class="kpi-item-h">'+it.title+'</div>'
+              +(it.sub?'<div class="psub" style="margin:2px 0 0">'+it.sub+'</div>':'')+'</div>';
+          }).join("");
+    }
+    pcontent.innerHTML='<h2>'+title+'</h2><div class="pbody">'+bodyHtml+'</div>';
+    panel.classList.add("open"); panel.setAttribute("aria-hidden","false");
+    document.body.classList.add("panel-open"); panel.scrollTop=0; hint.classList.add("hide");
+  }
+
+  document.querySelectorAll(".stat").forEach(function(card){
+    card.addEventListener("click",function(){
+      document.querySelectorAll(".stat").forEach(function(c){c.classList.remove("active")});
+      card.classList.add("active");
+      clearAll();
+      active=null;   // stale stage-selection state must not affect the next jump-click
+      statModal(card.dataset.stat);
+    });
+  });
+
+  // clicking a stage listed inside a KPI modal jumps to and opens that stage
+  pcontent && pcontent.addEventListener("click", function(ev){
+    var t=ev.target.closest(".kpi-click");
+    if(!t) return;
+    document.querySelectorAll(".stat").forEach(function(c){c.classList.remove("active")});
+    var el=document.querySelector('[data-id="'+t.dataset.jump+'"]');
+    if(el) el.click();
+  });
+})();
+
+/* ---- CIN version switcher: Current / Option 1 / Option 2 ---- */
+(function(){
+  var CIN_VERSIONS = {
+    current: {
+      cls:"missing", badgeless:true,
+      title:"CIN &mdash; Central Ingestion",
+      chips:'<span class="chip">Databricks</span><span class="plat loop">being restructured</span>',
+      meta:"Ingests everything regardless of domain &middot; <b>not a data product</b> &mdash; fails all four qualification tests",
+      showBDC:false,
+      detail:D["s1b"].b
+    },
+    opt1: {
+      cls:"partial",
+      title:"CIN &mdash; Central Ingestion",
+      chips:'<span class="chip">Databricks</span><span class="plat in">PHASE 1: RAW ONLY</span>',
+      meta:"<b>Option 1 (preferred).</b> Business logic migrates OUT to domain data products; CIN narrows to source-aligned raw landing &mdash; then is bypassed once BDC lands",
+      showBDC:true,
+      detail:tag('partial','OPTION 1 &mdash; DISTRIBUTED (PREFERRED)')+"<p><b>Phase 1:</b> domain/central data products consume from CIN Raw (source-aligned). Business logic migrates out of CIN and Synapse into the products that should own it. CIN keeps supplying stable, source-aligned extraction in the meantime.</p><p><b>Phase 2:</b> sources switch to BDC/S4HANA. Data products redirect to BDC-sourced views &mdash; logic changes again, since the BDC view differs from the CIN view. CIN is bypassed once migration completes.</p>"+note("Passes the qualification test from Phase 1 onward: named consumer, independent change, changes as a unit, requestable by name &mdash; because logic and ownership sit with the product, not a shared container.")+gap("<b>Gap this option does not yet name:</b> Phase 1 has domain data products become source-aligned, but does not state how genuinely cross-domain SAP reference data (customer, material, company code) avoids being duplicated into every domain's product. <b>Recommendation:</b> a small number of dedicated master data products &mdash; <code>shared_</code> published, <code>source_</code> mirrored by domains that need them &mdash; not absorbed into any single domain's product. Directly answers the source document's own open question 6: <i>&ldquo;Do we use CIN for non-SAP data in future?&rdquo;</i> &mdash; the master-data question is the SAP-side analogue of that same question.")+gap("Source: internal <i>&ldquo;BI Evolution &amp; Platform - Data Mesh Evaluation&rdquo;</i> document. Phase 1/2 content is Henkel's own documented plan; the master-data gap above is this assessment's addition to it.")
+    },
+    opt2: {
+      cls:"partial",
+      title:"CIN &mdash; Central Ingestion",
+      chips:'<span class="chip">Databricks</span><span class="plat loop">THIN CIN &middot; BACKUP</span>',
+      meta:"<b>Option 2 (backup).</b> CIN persists structurally; logic migrates Synapse&rarr;Databricks but stays centralized &mdash; data products do not take ownership",
+      showBDC:true,
+      detail:tag('missing','OPTION 2 &mdash; CENTRALIZED (BACKUP / &ldquo;THIN CIN&rdquo;)')+"<p><b>Phase 1:</b> CDS-based extraction into CIN, source-aligned, reapplying existing extractor logic. CIN stays as-is structurally. Logic migrates from Synapse to Databricks &mdash; but central data products do <b>not</b> take ownership of business logic; it stays centralized.</p><p><b>Phase 2:</b> SAP extractors move into BDC inside CIN, building a compatibility view plus a new S4-native view. Consumption remains partly indirect via CIN, decided source by source.</p>"+note("Does <b>not</b> resolve the qualification failure &mdash; still one undifferentiated centre everyone depends on, just thinner and Databricks-native. Explicitly framed as risk-reduction, not a target architecture.")+gap("Source: same internal document. Labelled &ldquo;current setup / backup solution&rdquo; in the original &mdash; lower disruption, same structural problem deferred.")
+    }
+  };
+
+  var btns=document.querySelectorAll(".verbtn");
+  btns.forEach(function(btn){
+    btn.addEventListener("click", function(){
+      btns.forEach(function(b){b.classList.remove("on")});
+      btn.classList.add("on");
+      applyCinVersion(btn.dataset.ver);
+    });
+  });
+
+  function applyCinVersion(ver){
+    var v=CIN_VERSIONS[ver];
+    var card=document.getElementById("s1b-live");
+    var bdc=document.getElementById("bdc-node");
+
+    // Read state BEFORE any mutation, and never touch classes we don't
+    // own here (active/up/down/dim/reveal/in/csel) - a prior bug wiped
+    // the whole class attribute, which silently cleared "active" and
+    // broke live-updating on every switch after the first.
+    var wasActive = card.classList.contains("active");
+    var existingBadge = card.querySelector(":scope > .shead > .badge");
+    var badgeCls = existingBadge ? existingBadge.className.replace("badge ","").trim() : null;
+    var badgeTxt = existingBadge ? existingBadge.textContent : null;
+
+    D["s1b"].b = v.detail;
+    D["s1b"].s = ver==="current" ? "Ownership unassigned &middot; restructuring confirmed by management decision"
+               : (ver==="opt1" ? "Henkel's documented, preferred option" : "Henkel's documented backup option");
+
+    card.style.opacity=0;
+    setTimeout(function(){
+      card.classList.remove("ok","partial","missing");
+      card.classList.add(v.cls);
+      card.querySelector(".shead").innerHTML='<span class="snum">STAGE 1b</span><span class="sname">'+v.title+'</span>'+v.chips;
+      card.querySelector(".smeta").innerHTML=v.meta;
+      if(badgeTxt){ addBadge(card, badgeCls, badgeTxt); }
+      card.style.opacity=1;
+    },140);
+
+    if(bdc){ bdc.classList.toggle("show", v.showBDC); }
+
+    // Update the open drawer immediately - do not wait for the fade,
+    // and do not gate this on post-mutation state.
+    if(wasActive){
+      pcontent.innerHTML='<h2>Stage 1b &mdash; '+v.title+'</h2><p class="psub">'+D["s1b"].s+'</p>'+lineage("s1b")+'<div class="pbody">'+D["s1b"].b+'</div>';
+    }
+  }
+})();
+
+nodes.forEach(function(n){
+  n.addEventListener("click",function(ev){
+    ev.stopPropagation();
+    var id=n.dataset.id;
+    if(active===id){ closePanel(); return; }
+    clearAll(); active=id;
+    if(isContainer(n)){
+      n.classList.add("csel");
+      var d2=D[id]; if(!d2)return;
+      var held=contains(id);
+      var heldHtml = held.length
+        ? '<div class="lin"><div class="d"><b>Contains</b><ul>'+held.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul></div></div>'
+        : '';
+      pcontent.innerHTML='<h2>'+d2.n+'</h2><p class="psub">'+d2.s+'</p>'+heldHtml+'<div class="pbody">'+d2.b+'</div>';
+      panel.classList.add("open"); panel.setAttribute("aria-hidden","false");
+      document.body.classList.add("panel-open"); panel.scrollTop=0; hint.classList.add("hide");
+      return;
+    }
+    var l=LIN[id]||{u:[],d:[]};
+    nodes.forEach(function(x){
+      var xid=x.dataset.id;
+      if(xid===id)return;
+      if(l.u.indexOf(xid)>-1){x.classList.add("up"); addBadge(x,"upb","↑ UPSTREAM");}
+      else if(l.d.indexOf(xid)>-1){x.classList.add("down"); addBadge(x,"downb","↓ DOWNSTREAM");}
+      else x.classList.add("dim");
+    });
+    n.classList.add("active");
+    addBadge(n,"sel","SELECTED");
+    markFlows();
+    var d=D[id]; if(!d)return;
+    pcontent.innerHTML='<h2>'+d.n+'</h2><p class="psub">'+d.s+'</p>'+lineage(id)+'<div class="pbody">'+d.b+'</div>';
+    panel.classList.add("open");
+    panel.setAttribute("aria-hidden","false");
+    document.body.classList.add("panel-open");
+    panel.scrollTop=0;
+    hint.classList.add("hide");
+  });
+});
+</script>
+</body>
+</html>

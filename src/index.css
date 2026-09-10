@@ -1,0 +1,127 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #0b0d12;
+  color: #eef0f6;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* React Flow custom dark theme */
+.react-flow__handle {
+  border-radius: 50%;
+}
+
+.react-flow__node {
+  cursor: pointer;
+}
+
+/* Flair & Spring Animations */
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(10px);
+  }
+}
+
+@keyframes modalContentShow {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -46%) scale(0.92);
+  }
+  65% {
+    transform: translate(-50%, -50.4%) scale(1.008);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes drawerSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes itemFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(106, 169, 232, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(106, 169, 232, 0.45);
+  }
+}
+
+.modal-overlay-animate {
+  animation: overlayFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.modal-content-animate {
+  animation: modalContentShow 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.drawer-animate {
+  animation: drawerSlideIn 0.34s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.item-animate {
+  animation: itemFadeUp 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.glow-selected {
+  animation: pulseGlow 2.5s infinite ease-in-out;
+}
+
+/* Smooth auto-arrange node positioning */
+.auto-arranging .react-flow__node {
+  transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
