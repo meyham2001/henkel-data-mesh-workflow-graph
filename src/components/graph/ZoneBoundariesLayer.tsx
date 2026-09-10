@@ -22,8 +22,6 @@ export const ZoneBoundariesLayer: React.FC<ZoneBoundariesLayerProps> = ({ nodes 
   const { x, y, zoom } = useViewport();
   const { selectedPlatformFilter, setSelectedPlatformFilter, showBoundaries } = useAppStore();
 
-  if (!showBoundaries) return null;
-
   const getBounds = (nodeIds: string[], padX = 36, padTop = 52, padBottom = 32): ComputedBounds | null => {
     const matchingNodes = nodes.filter((n) => nodeIds.includes(n.id) && n.position);
     if (matchingNodes.length === 0) return null;
@@ -87,6 +85,8 @@ export const ZoneBoundariesLayer: React.FC<ZoneBoundariesLayerProps> = ({ nodes 
 
   const isDatabricksFiltered =
     selectedPlatformFilter === 'inside_databricks' || selectedPlatformFilter === 'unity_catalog';
+
+  if (!showBoundaries) return null;
 
   return (
     <div
