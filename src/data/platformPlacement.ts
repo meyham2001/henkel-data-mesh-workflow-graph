@@ -323,19 +323,19 @@ export const PLATFORM_METADATA: Record<string, PlatformMetadata> = {
   'x-uc': {
     platformId: 'unity_catalog',
     systemName: 'Databricks Unity Catalog',
-    zoneId: 'cross_cutting',
-    zoneTitle: 'Cross-Cutting: Metadata & Governance',
-    zoneSub: 'applies across all stages',
-    boundaryTag: 'INSIDE DATABRICKS',
+    zoneId: 'zone_2',
+    zoneTitle: 'Zone 2: Databricks / Unity Catalog',
+    zoneSub: 'DxD owns · Metastore, Schemas & Access',
+    boundaryTag: 'INSIDE DATABRICKS · METASTORE',
     badgeStyle: {
-      bg: 'bg-blue-500/20',
-      text: 'text-blue-300',
-      border: 'border-blue-500/40',
+      bg: 'bg-indigo-500/20',
+      text: 'text-indigo-300',
+      border: 'border-indigo-500/40',
     },
     authoritativeFor: 'All data, transformation, access enforcement, and classification tags for enforcement',
     mustNotHold: 'Glossary or contract as system of record (stores no data itself)',
     placementDetails:
-      'Inside Databricks. Technical metadata, schema, lineage, and access enforcement. Spans stages 2–9; issues grants at Stage 9 and produces lineage ingested by DataHub at Stage 8.',
+      'Inside Databricks. Unity Catalog is Databricks\' native metastore, schema, lineage, and access enforcement layer. Spans stages 2–9; issues grants at Stage 9 and produces lineage ingested by DataHub at Stage 8.',
   },
   'x-dh': {
     platformId: 'outside_databricks',
@@ -423,7 +423,7 @@ export const ZONE_DEFINITIONS: Record<
     borderStyle: 'border-2 border-sky-400/60 shadow-[0_0_60px_rgba(56,189,248,0.08)]',
     bgStyle: 'bg-sky-500/[0.035]',
     headerColor: 'text-sky-300',
-    nodeIds: ['bdc-node', 'bdc', 's1b', 's2', 's3', 's4', 's5', 's6', 's7'],
+    nodeIds: ['bdc-node', 'bdc', 's1b', 's2', 's3', 's4', 's5', 's6', 's7', 'x-uc'],
     isDatabricksBoundary: true,
   },
   zone_3: {

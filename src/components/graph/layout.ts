@@ -88,27 +88,41 @@ export function getLayoutedElements(
     }
   });
 
-  // 3. Position cross-cutting governance entities in a dedicated lane on the right
-  // This completely prevents them from intersecting or overlapping the Databricks Zone 2 boundary
-  const governanceLaneX = Math.round(maxPipelineRight + 95);
+  // 3. Position x-uc INSIDE Databricks next to Stage 2 (where UC schema governance begins)
+  const s2Pos = layoutedPipelineMap.get('s2');
+  const xUcPosition = s2Pos
+    ? { x: Math.round(s2Pos.x + 360), y: s2Pos.y }
+    : { x: Math.round(maxPipelineRight - 100), y: 350 };
 
-  const crossCuttingYAnchorMap: Record<string, string> = {
-    'x-uc': 's2',   // Unity Catalog aligns with Stage 2 Raw
+  // Calculate the effective right boundary of Databricks (including x-uc)
+  const databricksRight = Math.max(maxPipelineRight, xUcPosition.x + (s2Pos ? NODE_WIDTH : 0));
+
+  // Position external governance entities (Git, DataHub, Governance Function) completely outside Databricks
+  const externalLaneX = Math.round(databricksRight + 85);
+
+  const externalYAnchorMap: Record<string, string> = {
     'x-git': 's5',  // Git aligns with Stage 5 Curated
     'x-dh': 's8',   // DataHub aligns with Stage 8 Discovery
     'x-gov': 's9',  // Governance function aligns with Stage 9 Access
   };
 
   const layoutedNodes = nodes.map((node) => {
+    if (node.id === 'x-uc') {
+      return {
+        ...node,
+        position: xUcPosition,
+      };
+    }
+
     if (node.id.startsWith('x-')) {
-      const anchorId = crossCuttingYAnchorMap[node.id];
+      const anchorId = externalYAnchorMap[node.id];
       const anchorPos = anchorId ? layoutedPipelineMap.get(anchorId) : null;
       const y = anchorPos ? anchorPos.y : 200;
 
       return {
         ...node,
         position: {
-          x: governanceLaneX,
+          x: externalLaneX,
           y,
         },
       };

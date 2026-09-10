@@ -63,7 +63,7 @@ export const ZoneBoundariesLayer: React.FC<ZoneBoundariesLayerProps> = ({ nodes 
 
   // Specific Unity Catalog sub-box inside Zone 2 (wrapping s2, s3, s4, s5, s6, s7)
   const ucSubBounds = useMemo(() => {
-    return getBounds(['s2', 's3', 's4', 's5', 's6', 's7'], 22, 42, 22);
+    return getBounds(['s2', 's3', 's4', 's5', 's6', 's7', 'x-uc'], 22, 42, 22);
   }, [nodes]);
 
   const isDatabricksFiltered =
