@@ -50,6 +50,11 @@ export function getLayoutedElements(
       weight = 0;
       minlen = 1;
     }
+    // Primary linear spine: s0 -> s1 -> s1b -> s2 -> s3 -> s4 -> s5
+    if (edge.id === 'e-s1-s1b' || edge.id === 'e-s1b-s2') {
+      weight = 50;
+      minlen = 1;
+    }
     // Main linear pipeline spine stages (s0 -> s1 -> s1b/bdc -> s2 -> s3 -> s4 -> s5 -> s6 -> s7 -> s9 -> s10 -> s11 -> s12)
     else if (
       edge.source.startsWith('s') &&

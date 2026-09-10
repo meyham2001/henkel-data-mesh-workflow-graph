@@ -51,20 +51,37 @@ export const ZoneBoundariesLayer: React.FC<ZoneBoundariesLayerProps> = ({ nodes 
     };
   };
 
+  // Specific Unity Catalog sub-box inside Zone 2 (wrapping s2, s3, s4, s5, s6, s7, and x-uc)
+  const ucSubBounds = useMemo(() => {
+    return getBounds(['s2', 's3', 's4', 's5', 's6', 's7', 'x-uc'], 22, 42, 22);
+  }, [nodes]);
+
   const zoneBounds = useMemo(() => {
     const result: Partial<Record<ArchitectureZoneId, ComputedBounds>> = {};
     (Object.keys(ZONE_DEFINITIONS) as ArchitectureZoneId[]).forEach((zid) => {
       const def = ZONE_DEFINITIONS[zid];
-      const b = getBounds(def.nodeIds);
-      if (b) result[zid] = b;
+      let b = getBounds(def.nodeIds);
+      if (b) {
+        if (zid === 'zone_2' && ucSubBounds) {
+          // CRITICAL: Databricks Compute & Ingestion layer sits ABOVE Unity Catalog.
+          // Zone 2's top must NEVER collapse onto the Unity Catalog boundary, even if Stage 1b is dragged.
+          // It is guaranteed to always maintain at least 150px of compute headroom above Unity Catalog.
+          const guaranteedTop = Math.min(b.y, ucSubBounds.y - 150);
+          const guaranteedBottom = Math.max(b.y + b.height, ucSubBounds.y + ucSubBounds.height + 25);
+          const guaranteedLeft = Math.min(b.x, ucSubBounds.x - 15);
+          const guaranteedRight = Math.max(b.x + b.width, ucSubBounds.x + ucSubBounds.width + 15);
+          b = {
+            x: guaranteedLeft,
+            y: guaranteedTop,
+            width: guaranteedRight - guaranteedLeft,
+            height: guaranteedBottom - guaranteedTop,
+          };
+        }
+        result[zid] = b;
+      }
     });
     return result;
-  }, [nodes]);
-
-  // Specific Unity Catalog sub-box inside Zone 2 (wrapping s2, s3, s4, s5, s6, s7)
-  const ucSubBounds = useMemo(() => {
-    return getBounds(['s2', 's3', 's4', 's5', 's6', 's7', 'x-uc'], 22, 42, 22);
-  }, [nodes]);
+  }, [nodes, ucSubBounds]);
 
   const isDatabricksFiltered =
     selectedPlatformFilter === 'inside_databricks' || selectedPlatformFilter === 'unity_catalog';
@@ -149,10 +166,12 @@ export const ZoneBoundariesLayer: React.FC<ZoneBoundariesLayerProps> = ({ nodes 
           <div className="absolute top-5 left-5 right-5 pointer-events-auto flex items-center justify-between bg-sky-950/40 border border-sky-500/20 px-3 py-1 rounded-xl text-[10.5px] text-sky-200/80">
             <div className="flex items-center gap-1.5 truncate">
               <span className="font-bold text-sky-300">Compute Layer:</span>
-              <span className="truncate">SQL Warehouses, Lakeflow, Notebooks execute transformations. UC governs data & access.</span>
+              <span className="truncate">
+                Ingestion Landing (Stage 1b CIN / SAP BDC) · SQL Warehouses, Lakeflow, Notebooks execute transformations outside UC.
+              </span>
             </div>
             <span className="text-[9.5px] bg-sky-500/10 px-1.5 py-0.5 rounded border border-sky-500/20 text-sky-300 font-mono shrink-0 hidden sm:inline">
-              Databricks Compute
+              Outside Unity Catalog
             </span>
           </div>
 

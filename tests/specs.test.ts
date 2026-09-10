@@ -238,4 +238,17 @@ describe('Specification Acceptance Criteria (D1 - D11)', () => {
     useAppStore.getState().setSelectedPlatformFilter(null);
     expect(useAppStore.getState().selectedPlatformFilter).toBeNull();
   });
+
+  it('Stage 1b sits vertically above Stage 2 (Raw) and Unity Catalog boundary', async () => {
+    const { getLayoutedElements } = await import('../src/components/graph/layout');
+    const rfNodes = PIPELINE_NODES.map((n) => ({ id: n.id, data: n, position: { x: 0, y: 0 } }));
+    const rfEdges = PIPELINE_EDGES.map((e) => ({ id: e.id, source: e.source, target: e.target }));
+    const { nodes } = getLayoutedElements(rfNodes, rfEdges);
+
+    const s1b = nodes.find((n) => n.id === 's1b')!;
+    const s2 = nodes.find((n) => n.id === 's2')!;
+
+    // s1b must be positioned higher up (smaller y) than s2
+    expect(s1b.position.y).toBeLessThan(s2.position.y);
+  });
 });
