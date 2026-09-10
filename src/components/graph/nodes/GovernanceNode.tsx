@@ -48,6 +48,9 @@ export const GovernanceNode: React.FC<NodeProps<GovernanceNodeType>> = memo(({ d
     if (data.id === 'x-dh' || data.id === 'x-git') {
       return selectedPlatformFilter === 'outside_databricks';
     }
+    if (data.id === 'x-gov') {
+      return selectedPlatformFilter === 'not_a_system';
+    }
     return false;
   }, [selectedPlatformFilter, data.id]);
 

@@ -105,11 +105,32 @@ export function getLayoutedElements(
   // Position external governance entities (Git, DataHub, Governance Function) completely outside Databricks
   const externalLaneX = Math.round(databricksRight + 85);
 
-  const externalYAnchorMap: Record<string, string> = {
-    'x-git': 's5',  // Git aligns with Stage 5 Curated
-    'x-dh': 's8',   // DataHub aligns with Stage 8 Discovery
-    'x-gov': 's9',  // Governance function aligns with Stage 9 Access
-  };
+  // Calculate distinct, non-overlapping Y positions for external nodes
+  const MIN_EXTERNAL_GAP = 75; // Standard vertical gap between cards
+  const externalPositions = new Map<string, { x: number; y: number }>();
+  let lastOccupiedY = -Infinity;
+
+  const externalOrder = ['x-git', 'x-dh', 'x-gov'];
+  externalOrder.forEach((id) => {
+    let idealY = 200;
+    if (id === 'x-git') {
+      idealY = layoutedPipelineMap.get('s5')?.y ?? 1500;
+    } else if (id === 'x-dh') {
+      // DataHub ingests technical lineage from Stage 8 (Data Discovery)
+      idealY = layoutedPipelineMap.get('s8')?.y ?? 2250;
+    } else if (id === 'x-gov') {
+      // Governance function feeds Stage 9 (Access Authorisation).
+      // Since Dagre places s8 and s9 at the same vertical rank (y = 2250),
+      // anchor x-gov cleanly beside Stage 10 (Consumption) or below x-dh with clearance.
+      const s10Pos = layoutedPipelineMap.get('s10');
+      const s9Pos = layoutedPipelineMap.get('s9');
+      idealY = s10Pos?.y ?? (s9Pos ? s9Pos.y + NODE_HEIGHT + MIN_EXTERNAL_GAP : 2470);
+    }
+
+    const effectiveY = Math.max(idealY, lastOccupiedY + NODE_HEIGHT + MIN_EXTERNAL_GAP);
+    externalPositions.set(id, { x: externalLaneX, y: effectiveY });
+    lastOccupiedY = effectiveY;
+  });
 
   const layoutedNodes = nodes.map((node) => {
     if (node.id === 'x-uc') {
@@ -120,16 +141,10 @@ export function getLayoutedElements(
     }
 
     if (node.id.startsWith('x-')) {
-      const anchorId = externalYAnchorMap[node.id];
-      const anchorPos = anchorId ? layoutedPipelineMap.get(anchorId) : null;
-      const y = anchorPos ? anchorPos.y : 200;
-
+      const pos = externalPositions.get(node.id) || { x: externalLaneX, y: 200 };
       return {
         ...node,
-        position: {
-          x: externalLaneX,
-          y,
-        },
+        position: pos,
       };
     }
 

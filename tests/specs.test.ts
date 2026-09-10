@@ -252,6 +252,25 @@ describe('Specification Acceptance Criteria (D1 - D11)', () => {
     expect(s1b.position.y).toBeLessThan(s2.position.y);
   });
 
+  it('External governance entities (Git, DataHub, Governance Function) do not overlap and maintain vertical clearance', async () => {
+    const { getLayoutedElements } = await import('../src/components/graph/layout');
+    const rfNodes = PIPELINE_NODES.map((n) => ({ id: n.id, data: n, position: { x: 0, y: 0 } }));
+    const rfEdges = PIPELINE_EDGES.map((e) => ({ id: e.id, source: e.source, target: e.target }));
+    const { nodes } = getLayoutedElements(rfNodes, rfEdges);
+
+    const git = nodes.find((n) => n.id === 'x-git')!;
+    const dh = nodes.find((n) => n.id === 'x-dh')!;
+    const gov = nodes.find((n) => n.id === 'x-gov')!;
+
+    // Must be strictly ordered vertically
+    expect(git.position.y).toBeLessThan(dh.position.y);
+    expect(dh.position.y).toBeLessThan(gov.position.y);
+
+    // Each node must have at least 180px vertical clearance (height 145px + margin)
+    expect(dh.position.y - git.position.y).toBeGreaterThanOrEqual(180);
+    expect(gov.position.y - dh.position.y).toBeGreaterThanOrEqual(180);
+  });
+
   it('Show/hide boundaries toggle controls boundary visibility in store', async () => {
     const { useAppStore } = await import('../src/store/appStore');
     expect(useAppStore.getState().showBoundaries).toBe(true);
