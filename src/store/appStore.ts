@@ -23,6 +23,9 @@ export interface AppState {
   toggleSummaryBanner: () => void;
   selectedPlatformFilter: string | null;
   setSelectedPlatformFilter: (filter: string | null) => void;
+  showBoundaries: boolean;
+  setShowBoundaries: (show: boolean) => void;
+  toggleShowBoundaries: () => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -35,6 +38,7 @@ export const useAppStore = create<AppState>((set) => ({
   isStatsModalOpen: false,
   isSummaryBannerOpen: false,
   selectedPlatformFilter: null,
+  showBoundaries: true,
 
   setSelectedVersion: (versionId: string) => set({ selectedVersion: versionId }),
   setSelectedNodeId: (nodeId: string | null) =>
@@ -58,4 +62,6 @@ export const useAppStore = create<AppState>((set) => ({
   setIsSummaryBannerOpen: (open: boolean) => set({ isSummaryBannerOpen: open }),
   toggleSummaryBanner: () => set((state) => ({ isSummaryBannerOpen: !state.isSummaryBannerOpen })),
   setSelectedPlatformFilter: (filter: string | null) => set({ selectedPlatformFilter: filter }),
+  setShowBoundaries: (show: boolean) => set({ showBoundaries: show }),
+  toggleShowBoundaries: () => set((state) => ({ showBoundaries: !state.showBoundaries })),
 }));

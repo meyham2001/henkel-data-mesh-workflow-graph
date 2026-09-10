@@ -251,4 +251,22 @@ describe('Specification Acceptance Criteria (D1 - D11)', () => {
     // s1b must be positioned higher up (smaller y) than s2
     expect(s1b.position.y).toBeLessThan(s2.position.y);
   });
+
+  it('Show/hide boundaries toggle controls boundary visibility in store', async () => {
+    const { useAppStore } = await import('../src/store/appStore');
+    expect(useAppStore.getState().showBoundaries).toBe(true);
+
+    // Toggle off
+    useAppStore.getState().toggleShowBoundaries();
+    expect(useAppStore.getState().showBoundaries).toBe(false);
+
+    // Toggle back on
+    useAppStore.getState().toggleShowBoundaries();
+    expect(useAppStore.getState().showBoundaries).toBe(true);
+
+    // Direct setter
+    useAppStore.getState().setShowBoundaries(false);
+    expect(useAppStore.getState().showBoundaries).toBe(false);
+    useAppStore.getState().setShowBoundaries(true);
+  });
 });

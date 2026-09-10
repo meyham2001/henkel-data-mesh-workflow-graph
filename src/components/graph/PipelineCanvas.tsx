@@ -15,7 +15,7 @@ import {
   ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Link2, ArrowRight, X, LayoutGrid, Check, Server } from 'lucide-react';
+import { Link2, ArrowRight, X, LayoutGrid, Check, Server, Eye, EyeOff } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { PIPELINE_NODES } from '../../data/nodes';
 import { PIPELINE_EDGES } from '../../data/edges';
@@ -46,6 +46,8 @@ export const PipelineCanvas: React.FC = () => {
     setFilterStatus,
     selectedPlatformFilter,
     setSelectedPlatformFilter,
+    showBoundaries,
+    toggleShowBoundaries,
   } = useAppStore();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -163,10 +165,14 @@ export const PipelineCanvas: React.FC = () => {
         e.preventDefault();
         handleAutoArrange();
       }
+      if (e.altKey && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleShowBoundaries();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setSelectedNodeId, setSelectedEdgeId, setIsStatsModalOpen, setFilterStatus, setSelectedPlatformFilter, handleAutoArrange]);
+  }, [setSelectedNodeId, setSelectedEdgeId, setIsStatsModalOpen, setFilterStatus, setSelectedPlatformFilter, handleAutoArrange, toggleShowBoundaries]);
 
   // Active edge details for floating banner
   const selectedEdgeDetails = useMemo(() => {
@@ -245,6 +251,29 @@ export const PipelineCanvas: React.FC = () => {
             Undecided
           </button>
         </div>
+
+        {/* Toggle Boundaries Button */}
+        <button
+          onClick={() => toggleShowBoundaries()}
+          className={`px-3 py-1.5 rounded-xl border backdrop-blur-md text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xl select-none group ${
+            showBoundaries
+              ? 'bg-sky-500/20 text-sky-300 border-sky-400/40 hover:bg-sky-500/30'
+              : 'bg-[#141826]/90 text-dim border-border hover:bg-[#1c233a] hover:text-white'
+          }`}
+          title={showBoundaries ? 'Hide all platform & zone boundaries (Alt+B)' : 'Show platform & zone boundaries (Alt+B)'}
+        >
+          {showBoundaries ? (
+            <>
+              <Eye size={13} className="text-sky-400" />
+              <span>Boundaries: On</span>
+            </>
+          ) : (
+            <>
+              <EyeOff size={13} className="text-dim" />
+              <span>Boundaries: Off</span>
+            </>
+          )}
+        </button>
 
         {/* Floating Auto-Arrange Button on Canvas */}
         <button
@@ -384,6 +413,17 @@ export const PipelineCanvas: React.FC = () => {
         <Controls
           className="!bg-[#141826] !border-border !rounded-xl !overflow-hidden !shadow-xl [&>button]:!border-border [&>button]:!fill-white [&>button:hover]:!bg-white/10"
         >
+          <ControlButton
+            onClick={() => toggleShowBoundaries()}
+            title={showBoundaries ? 'Hide Platform Boundaries (Alt+B)' : 'Show Platform Boundaries (Alt+B)'}
+            aria-label="Toggle Platform Boundaries"
+          >
+            {showBoundaries ? (
+              <Eye size={14} className="text-sky-400" />
+            ) : (
+              <EyeOff size={14} className="text-slate-400" />
+            )}
+          </ControlButton>
           <ControlButton
             onClick={handleAutoArrange}
             title="Auto-arrange layout (Alt+A)"

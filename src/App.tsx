@@ -7,11 +7,16 @@ import { StatsBar } from './components/StatsBar';
 import { SearchBar } from './components/SearchBar';
 import { ExportMenu } from './components/ExportMenu';
 import { StatsModal } from './components/StatsModal';
-import { Network } from 'lucide-react';
+import { Network, Eye, EyeOff } from 'lucide-react';
 import { useAppStore } from './store/appStore';
 
 export const App: React.FC = () => {
-  const { selectedPlatformFilter, setSelectedPlatformFilter } = useAppStore();
+  const {
+    selectedPlatformFilter,
+    setSelectedPlatformFilter,
+    showBoundaries,
+    toggleShowBoundaries,
+  } = useAppStore();
   return (
     <div className="flex flex-col h-screen w-screen bg-[#0b0d12] text-[#eef0f6] overflow-hidden select-none">
       {/* Top Application Header */}
@@ -122,6 +127,20 @@ export const App: React.FC = () => {
             >
               <span className="w-3.5 h-2 rounded border border-dashed border-amber-400 bg-amber-500/20"></span>
               <span>Home Undecided</span>
+            </button>
+
+            <div className="h-3.5 w-px bg-border hidden sm:block"></div>
+            <button
+              onClick={() => toggleShowBoundaries()}
+              className={`flex items-center gap-1.5 transition-colors cursor-pointer px-2 py-0.5 rounded-md border text-[10px] font-semibold ${
+                showBoundaries
+                  ? 'bg-sky-500/20 text-sky-300 border-sky-400/40 hover:bg-sky-500/30'
+                  : 'bg-white/5 text-dim border-white/10 hover:text-white'
+              }`}
+              title="Show or hide all platform & zone boundaries (Alt+B)"
+            >
+              {showBoundaries ? <Eye size={11} className="text-sky-400" /> : <EyeOff size={11} />}
+              <span>{showBoundaries ? 'Hide Boundaries' : 'Show Boundaries'}</span>
             </button>
           </div>
         </div>

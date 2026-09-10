@@ -20,7 +20,9 @@ const DEFAULT_NODE_HEIGHT = 150;
 
 export const ZoneBoundariesLayer: React.FC<ZoneBoundariesLayerProps> = ({ nodes }) => {
   const { x, y, zoom } = useViewport();
-  const { selectedPlatformFilter, setSelectedPlatformFilter } = useAppStore();
+  const { selectedPlatformFilter, setSelectedPlatformFilter, showBoundaries } = useAppStore();
+
+  if (!showBoundaries) return null;
 
   const getBounds = (nodeIds: string[], padX = 36, padTop = 52, padBottom = 32): ComputedBounds | null => {
     const matchingNodes = nodes.filter((n) => nodeIds.includes(n.id) && n.position);
